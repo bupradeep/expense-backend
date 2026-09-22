@@ -1,62 +1,56 @@
-const db = require('../utils/db');
-const queries = require('../utils/expenseQueries');
+const { ExpenseClaim, Reimbursement, AuditLog } = require('../models');
 
 async function processPayment(id, data) {
   if (!data.processedBy) {
     throw createError(400, 'processedBy is required');
   }
 
-  const pool = await db.getPool();
+  const claim = await ExpenseClaim.findByPk(id);
 
-  const claimResult = await new db.sql.Request(pool)
-    .input('ExpenseClaimId', db.sql.Int, id)
-    .query(queries.getClaimById);
-
-  if (!claimResult.recordset.length) {
+  if (!claim) {
     throw createError(404, 'Expense claim not found');
   }
-
-  const claim = claimResult.recordset[0];
 
   if (claim.Status !== 'Approved') {
     throw createError(400, 'Only approved claims can be reimbursed');
   }
 
-  const existing = await new db.sql.Request(pool)
-    .input('ExpenseClaimId', db.sql.Int, id)
-    .query(queries.getReimbursementByClaimId);
+  const existing = await Reimbursement.findOne({ where: { ExpenseClaimId: id } });
 
-  if (existing.recordset.length) {
+  if (existing) {
     throw createError(400, 'Reimbursement already exists for this claim');
   }
 
-  await new db.sql.Request(pool)
-    .input('ExpenseClaimId', db.sql.Int, id)
-    .input('PaymentReference', db.sql.VarChar(100), data.paymentReference || null)
-    .input('PaymentDate', db.sql.Date, data.paymentDate || new Date())
-    .input('PaymentAmount', db.sql.Decimal(18, 2), data.paymentAmount || claim.TotalAmount)
-    .input('PaymentMethod', db.sql.VarChar(50), data.paymentMethod || 'Bank Transfer')
-    .input('TransactionReference', db.sql.VarChar(150), data.transactionReference || null)
-    .input('PaymentRemarks', db.sql.VarChar(1000), data.paymentRemarks || null)
-    .input('ProcessedBy', db.sql.Int, data.processedBy)
-    .input('Status', db.sql.VarChar(30), 'Completed')
-    .input('CreatedBy', db.sql.Int, data.processedBy)
-    .query(queries.insertReimbursement);
+  await Reimbursement.create({
+    ExpenseClaimId: id,
+    PaymentReference: data.paymentReference || null,
+    PaymentDate: data.paymentDate || new Date(),
+    PaymentAmount: data.paymentAmount || claim.TotalAmount,
+    PaymentMethod: data.paymentMethod || 'Bank Transfer',
+    TransactionReference: data.transactionReference || null,
+    PaymentRemarks: data.paymentRemarks || null,
+    ProcessedBy: data.processedBy,
+    Status: 'Completed',
+    CreatedAt: new Date(),
+    CreatedBy: data.processedBy
+  });
 
-  await new db.sql.Request(pool)
-    .input('ExpenseClaimId', db.sql.Int, id)
-    .input('Status', db.sql.VarChar(50), 'Reimbursed')
-    .input('UpdatedBy', db.sql.Int, data.processedBy)
-    .query(queries.updateClaimStatus);
+  await ExpenseClaim.update({
+    Status: 'Reimbursed',
+    UpdatedAt: new Date(),
+    UpdatedBy: data.processedBy
+  }, { where: { ExpenseClaimId: id } });
 
-  await new db.sql.Request(pool)
-    .input('UserId', db.sql.Int, data.processedBy)
-    .input('ExpenseClaimId', db.sql.Int, id)
-    .input('Action', db.sql.VarChar(100), 'PAYMENT_PROCESSED')
-    .input('PreviousStatus', db.sql.VarChar(50), 'Approved')
-    .input('NewStatus', db.sql.VarChar(50), 'Reimbursed')
-    .input('Comments', db.sql.VarChar(1000), 'Reimbursement processed')
-    .query(queries.insertAuditLog);
+  await AuditLog.create({
+    UserId: data.processedBy,
+    ExpenseClaimId: id,
+    Action: 'PAYMENT_PROCESSED',
+    PreviousStatus: 'Approved',
+    NewStatus: 'Reimbursed',
+    Comments: 'Reimbursement processed',
+    CreatedAt: new Date(),
+    CreatedBy: data.processedBy
+  });
 
   return {
     message: 'Reimbursement processed successfully',

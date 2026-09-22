@@ -7,7 +7,17 @@ const approvalService = require('../services/approvalService');
 router.get('/pending', async (req, res, next) => {
   try {
     const result = await approvalService.getPendingApprovals(req.query);
-    res.json({ success: true, data: result });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /approvals/history?fromDate=&toDate=&status=&approverId=&expenseClaimId=
+router.get('/history', async (req, res, next) => {
+  try {
+    const result = await approvalService.getApprovalHistory(req.query);
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -21,7 +31,7 @@ router.post('/:id/approve', async (req, res, next) => {
       req.body
     );
 
-    res.json({ success: true, data: result });
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -35,7 +45,7 @@ router.post('/:id/reject', async (req, res, next) => {
       req.body
     );
 
-    res.json({ success: true, data: result });
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -49,7 +59,7 @@ router.post('/:id/send-back', async (req, res, next) => {
       req.body
     );
 
-    res.json({ success: true, data: result });
+    res.json(result);
   } catch (error) {
     next(error);
   }

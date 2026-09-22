@@ -7,7 +7,7 @@ const reportService = require('../services/reportService');
 router.get('/expenses', async (req, res, next) => {
   try {
     const result = await reportService.getExpenseReport(req.query);
-    res.json({ success: true, data: result });
+    res.json(result);
   } catch (error) {
     next(error);
   }

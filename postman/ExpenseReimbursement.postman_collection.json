@@ -1,0 +1,712 @@
+{
+  "info": {
+    "name": "Expense Reimbursement API",
+    "description": "CRUD and workflow APIs for the Expense Reimbursement backend (Express + Sequelize).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "userId", "value": "1" },
+    { "key": "approverId", "value": "2" },
+    { "key": "employeeId", "value": "1" },
+    { "key": "departmentId", "value": "1" },
+    { "key": "projectId", "value": "1" },
+    { "key": "categoryId", "value": "1" },
+    { "key": "policyRuleId", "value": "1" },
+    { "key": "approvalRuleId", "value": "1" },
+    { "key": "expenseClaimId", "value": "1" },
+    { "key": "expenseItemId", "value": "1" },
+    { "key": "receiptId", "value": "1" },
+    { "key": "reimbursementId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Expenses",
+      "item": [
+        {
+          "name": "Create Expense",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/expenses", "host": ["{{baseUrl}}"], "path": ["expenses"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"claimNumber\": \"EXP-2001\",\n  \"employeeId\": {{employeeId}},\n  \"departmentId\": {{departmentId}},\n  \"projectId\": {{projectId}},\n  \"claimDate\": \"2026-09-18\",\n  \"currency\": \"INR\",\n  \"businessPurpose\": \"Client meeting\",\n  \"location\": \"Bangalore\",\n  \"paymentMethod\": \"Credit Card\",\n  \"remarks\": \"Client visit\",\n  \"createdBy\": {{userId}},\n  \"items\": [\n    {\n      \"categoryId\": {{categoryId}},\n      \"expenseDate\": \"2026-09-18\",\n      \"amount\": 4500,\n      \"currency\": \"INR\",\n      \"merchantName\": \"ABC Hotel\",\n      \"description\": \"Hotel stay\",\n      \"businessPurpose\": \"Client meeting\",\n      \"paymentMethod\": \"Credit Card\"\n    },\n    {\n      \"categoryId\": {{categoryId}},\n      \"expenseDate\": \"2026-09-18\",\n      \"amount\": 800,\n      \"currency\": \"INR\",\n      \"merchantName\": \"XYZ Restaurant\",\n      \"description\": \"Dinner\",\n      \"businessPurpose\": \"Client meeting\",\n      \"paymentMethod\": \"Credit Card\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "List Expenses",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expenses?employeeId={{employeeId}}&status=Draft&departmentId={{departmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["expenses"],
+              "query": [
+                { "key": "employeeId", "value": "{{employeeId}}" },
+                { "key": "status", "value": "Draft" },
+                { "key": "departmentId", "value": "{{departmentId}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Expense By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/expenses/{{expenseClaimId}}", "host": ["{{baseUrl}}"], "path": ["expenses", "{{expenseClaimId}}"] }
+          }
+        },
+        {
+          "name": "Update Expense",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/expenses/{{expenseClaimId}}", "host": ["{{baseUrl}}"], "path": ["expenses", "{{expenseClaimId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessPurpose\": \"Client meeting - updated\",\n  \"location\": \"Bangalore\",\n  \"paymentMethod\": \"Credit Card\",\n  \"remarks\": \"Updated remarks\",\n  \"updatedBy\": {{userId}},\n  \"items\": [\n    {\n      \"categoryId\": {{categoryId}},\n      \"expenseDate\": \"2026-09-18\",\n      \"amount\": 5000,\n      \"currency\": \"INR\",\n      \"merchantName\": \"ABC Hotel\",\n      \"description\": \"Hotel stay\",\n      \"businessPurpose\": \"Client meeting\",\n      \"paymentMethod\": \"Credit Card\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Expense",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/expenses/{{expenseClaimId}}", "host": ["{{baseUrl}}"], "path": ["expenses", "{{expenseClaimId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"updatedBy\": {{userId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "Submit Expense",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/expenses/{{expenseClaimId}}/submit", "host": ["{{baseUrl}}"], "path": ["expenses", "{{expenseClaimId}}", "submit"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": {{userId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Expense History",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/expenses/{{expenseClaimId}}/history", "host": ["{{baseUrl}}"], "path": ["expenses", "{{expenseClaimId}}", "history"] }
+          }
+        },
+        {
+          "name": "Get Expense Receipts",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/expenses/{{expenseClaimId}}/receipts", "host": ["{{baseUrl}}"], "path": ["expenses", "{{expenseClaimId}}", "receipts"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Approvals",
+      "item": [
+        {
+          "name": "Get Pending Approvals",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/approvals/pending?userId={{approverId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["approvals", "pending"],
+              "query": [{ "key": "userId", "value": "{{approverId}}" }]
+            }
+          }
+        },
+        {
+          "name": "Get Approval History (filtered)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/approvals/history?fromDate=2026-01-01&toDate=2026-12-31&status=Approved&approverId={{approverId}}&expenseClaimId={{expenseClaimId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["approvals", "history"],
+              "query": [
+                { "key": "fromDate", "value": "2026-01-01" },
+                { "key": "toDate", "value": "2026-12-31" },
+                { "key": "status", "value": "Approved" },
+                { "key": "approverId", "value": "{{approverId}}" },
+                { "key": "expenseClaimId", "value": "{{expenseClaimId}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve Expense",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/approvals/{{expenseClaimId}}/approve", "host": ["{{baseUrl}}"], "path": ["approvals", "{{expenseClaimId}}", "approve"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approverId\": {{approverId}},\n  \"approvalLevel\": 1,\n  \"comments\": \"Approved\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reject Expense",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/approvals/{{expenseClaimId}}/reject", "host": ["{{baseUrl}}"], "path": ["approvals", "{{expenseClaimId}}", "reject"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approverId\": {{approverId}},\n  \"approvalLevel\": 1,\n  \"comments\": \"Receipt is missing\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Send Back Expense",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/approvals/{{expenseClaimId}}/send-back", "host": ["{{baseUrl}}"], "path": ["approvals", "{{expenseClaimId}}", "send-back"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approverId\": {{approverId}},\n  \"approvalLevel\": 1,\n  \"comments\": \"Please provide the invoice\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reimbursement (Payment)",
+      "item": [
+        {
+          "name": "Process Payment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/expenses/{{expenseClaimId}}/payment", "host": ["{{baseUrl}}"], "path": ["expenses", "{{expenseClaimId}}", "payment"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processedBy\": {{userId}},\n  \"paymentReference\": \"PAY-2001\",\n  \"paymentDate\": \"2026-09-20\",\n  \"paymentAmount\": 5300,\n  \"paymentMethod\": \"Bank Transfer\",\n  \"transactionReference\": \"TXN-12345\",\n  \"paymentRemarks\": \"Payment completed\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Expense Report",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/reports/expenses?fromDate=2026-01-01&toDate=2026-12-31&departmentId={{departmentId}}&employeeId={{employeeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "expenses"],
+              "query": [
+                { "key": "fromDate", "value": "2026-01-01" },
+                { "key": "toDate", "value": "2026-12-31" },
+                { "key": "departmentId", "value": "{{departmentId}}" },
+                { "key": "employeeId", "value": "{{employeeId}}" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"employeeCode\": \"EMP-1001\",\n  \"role\": \"Employee\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"] }
+          }
+        },
+        {
+          "name": "Get User By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] }
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"employeeCode\": \"EMP-1001\",\n  \"role\": \"Manager\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Departments",
+      "item": [
+        {
+          "name": "Create Department",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/departments", "host": ["{{baseUrl}}"], "path": ["departments"] },
+            "body": { "mode": "raw", "raw": "{\n  \"departmentName\": \"Finance\"\n}" }
+          }
+        },
+        {
+          "name": "List Departments",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/departments", "host": ["{{baseUrl}}"], "path": ["departments"] }
+          }
+        },
+        {
+          "name": "Get Department By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/departments/{{departmentId}}", "host": ["{{baseUrl}}"], "path": ["departments", "{{departmentId}}"] }
+          }
+        },
+        {
+          "name": "Update Department",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/departments/{{departmentId}}", "host": ["{{baseUrl}}"], "path": ["departments", "{{departmentId}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"departmentName\": \"Finance & Accounts\"\n}" }
+          }
+        },
+        {
+          "name": "Delete Department",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/departments/{{departmentId}}", "host": ["{{baseUrl}}"], "path": ["departments", "{{departmentId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "Create Project",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"Client Onboarding\",\n  \"clientName\": \"Acme Corp\",\n  \"costCenter\": \"CC-100\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Projects",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
+          }
+        },
+        {
+          "name": "Get Project By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["projects", "{{projectId}}"] }
+          }
+        },
+        {
+          "name": "Update Project",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["projects", "{{projectId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"Client Onboarding Phase 2\",\n  \"clientName\": \"Acme Corp\",\n  \"costCenter\": \"CC-100\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Project",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["projects", "{{projectId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Expense Categories",
+      "item": [
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/expense-categories", "host": ["{{baseUrl}}"], "path": ["expense-categories"] },
+            "body": { "mode": "raw", "raw": "{\n  \"categoryName\": \"Travel\"\n}" }
+          }
+        },
+        {
+          "name": "List Categories",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/expense-categories", "host": ["{{baseUrl}}"], "path": ["expense-categories"] }
+          }
+        },
+        {
+          "name": "Get Category By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/expense-categories/{{categoryId}}", "host": ["{{baseUrl}}"], "path": ["expense-categories", "{{categoryId}}"] }
+          }
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/expense-categories/{{categoryId}}", "host": ["{{baseUrl}}"], "path": ["expense-categories", "{{categoryId}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"categoryName\": \"Travel & Lodging\"\n}" }
+          }
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/expense-categories/{{categoryId}}", "host": ["{{baseUrl}}"], "path": ["expense-categories", "{{categoryId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Policy Rules",
+      "item": [
+        {
+          "name": "Create Policy Rule",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/policy-rules", "host": ["{{baseUrl}}"], "path": ["policy-rules"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": {{categoryId}},\n  \"policyName\": \"Hotel Stay Limit\",\n  \"maximumAmount\": 5000,\n  \"limitType\": \"Per Day\",\n  \"currency\": \"INR\",\n  \"isReceiptRequired\": true,\n  \"isActive\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "List Policy Rules",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/policy-rules", "host": ["{{baseUrl}}"], "path": ["policy-rules"] }
+          }
+        },
+        {
+          "name": "Get Policy Rule By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/policy-rules/{{policyRuleId}}", "host": ["{{baseUrl}}"], "path": ["policy-rules", "{{policyRuleId}}"] }
+          }
+        },
+        {
+          "name": "Update Policy Rule",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/policy-rules/{{policyRuleId}}", "host": ["{{baseUrl}}"], "path": ["policy-rules", "{{policyRuleId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": {{categoryId}},\n  \"policyName\": \"Hotel Stay Limit\",\n  \"maximumAmount\": 6000,\n  \"limitType\": \"Per Day\",\n  \"currency\": \"INR\",\n  \"isReceiptRequired\": true,\n  \"isActive\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Policy Rule",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/policy-rules/{{policyRuleId}}", "host": ["{{baseUrl}}"], "path": ["policy-rules", "{{policyRuleId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Approval Rules",
+      "item": [
+        {
+          "name": "Create Approval Rule",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/approval-rules", "host": ["{{baseUrl}}"], "path": ["approval-rules"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"minimumAmount\": 0,\n  \"maximumAmount\": 10000,\n  \"approvalLevel\": 1,\n  \"approverRole\": \"Manager\",\n  \"sequenceNo\": 1,\n  \"isActive\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "List Approval Rules",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/approval-rules", "host": ["{{baseUrl}}"], "path": ["approval-rules"] }
+          }
+        },
+        {
+          "name": "Get Approval Rule By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/approval-rules/{{approvalRuleId}}", "host": ["{{baseUrl}}"], "path": ["approval-rules", "{{approvalRuleId}}"] }
+          }
+        },
+        {
+          "name": "Update Approval Rule",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/approval-rules/{{approvalRuleId}}", "host": ["{{baseUrl}}"], "path": ["approval-rules", "{{approvalRuleId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"minimumAmount\": 0,\n  \"maximumAmount\": 15000,\n  \"approvalLevel\": 1,\n  \"approverRole\": \"Manager\",\n  \"sequenceNo\": 1,\n  \"isActive\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Approval Rule",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/approval-rules/{{approvalRuleId}}", "host": ["{{baseUrl}}"], "path": ["approval-rules", "{{approvalRuleId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Expense Items",
+      "item": [
+        {
+          "name": "Create Expense Item",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/expense-items", "host": ["{{baseUrl}}"], "path": ["expense-items"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expenseClaimId\": {{expenseClaimId}},\n  \"categoryId\": {{categoryId}},\n  \"expenseDate\": \"2026-09-18\",\n  \"amount\": 1200,\n  \"currency\": \"INR\",\n  \"merchantName\": \"Cafe Coffee Day\",\n  \"description\": \"Client breakfast\",\n  \"businessPurpose\": \"Client meeting\",\n  \"paymentMethod\": \"Credit Card\",\n  \"isPolicyException\": false,\n  \"createdBy\": {{userId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "List Expense Items",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expense-items?expenseClaimId={{expenseClaimId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["expense-items"],
+              "query": [{ "key": "expenseClaimId", "value": "{{expenseClaimId}}" }]
+            }
+          }
+        },
+        {
+          "name": "Get Expense Item By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/expense-items/{{expenseItemId}}", "host": ["{{baseUrl}}"], "path": ["expense-items", "{{expenseItemId}}"] }
+          }
+        },
+        {
+          "name": "Update Expense Item",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/expense-items/{{expenseItemId}}", "host": ["{{baseUrl}}"], "path": ["expense-items", "{{expenseItemId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": {{categoryId}},\n  \"expenseDate\": \"2026-09-18\",\n  \"amount\": 1500,\n  \"currency\": \"INR\",\n  \"merchantName\": \"Cafe Coffee Day\",\n  \"description\": \"Client breakfast\",\n  \"businessPurpose\": \"Client meeting\",\n  \"paymentMethod\": \"Credit Card\",\n  \"isPolicyException\": false,\n  \"updatedBy\": {{userId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Expense Item",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/expense-items/{{expenseItemId}}", "host": ["{{baseUrl}}"], "path": ["expense-items", "{{expenseItemId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Expense Receipts",
+      "item": [
+        {
+          "name": "Create Receipt",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/expense-receipts", "host": ["{{baseUrl}}"], "path": ["expense-receipts"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expenseClaimId\": {{expenseClaimId}},\n  \"expenseItemId\": {{expenseItemId}},\n  \"fileName\": \"hotel-receipt.pdf\",\n  \"filePath\": \"/uploads/receipts/hotel-receipt.pdf\",\n  \"fileType\": \"application/pdf\",\n  \"fileSize\": 204800,\n  \"uploadedBy\": {{userId}},\n  \"createdBy\": {{userId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "List Receipts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/expense-receipts?expenseClaimId={{expenseClaimId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["expense-receipts"],
+              "query": [{ "key": "expenseClaimId", "value": "{{expenseClaimId}}" }]
+            }
+          }
+        },
+        {
+          "name": "Get Receipt By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/expense-receipts/{{receiptId}}", "host": ["{{baseUrl}}"], "path": ["expense-receipts", "{{receiptId}}"] }
+          }
+        },
+        {
+          "name": "Update Receipt",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/expense-receipts/{{receiptId}}", "host": ["{{baseUrl}}"], "path": ["expense-receipts", "{{receiptId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expenseItemId\": {{expenseItemId}},\n  \"fileName\": \"hotel-receipt-v2.pdf\",\n  \"filePath\": \"/uploads/receipts/hotel-receipt-v2.pdf\",\n  \"fileType\": \"application/pdf\",\n  \"fileSize\": 210000,\n  \"updatedBy\": {{userId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Receipt",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/expense-receipts/{{receiptId}}", "host": ["{{baseUrl}}"], "path": ["expense-receipts", "{{receiptId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reimbursements (CRUD)",
+      "item": [
+        {
+          "name": "Create Reimbursement",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/reimbursements", "host": ["{{baseUrl}}"], "path": ["reimbursements"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expenseClaimId\": {{expenseClaimId}},\n  \"paymentReference\": \"PAY-3001\",\n  \"paymentDate\": \"2026-09-20\",\n  \"paymentAmount\": 5300,\n  \"paymentMethod\": \"Bank Transfer\",\n  \"transactionReference\": \"TXN-99887\",\n  \"paymentRemarks\": \"Manual reimbursement entry\",\n  \"processedBy\": {{userId}},\n  \"status\": \"Pending\",\n  \"createdBy\": {{userId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "List Reimbursements",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/reimbursements?expenseClaimId={{expenseClaimId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reimbursements"],
+              "query": [{ "key": "expenseClaimId", "value": "{{expenseClaimId}}" }]
+            }
+          }
+        },
+        {
+          "name": "Get Reimbursement By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/reimbursements/{{reimbursementId}}", "host": ["{{baseUrl}}"], "path": ["reimbursements", "{{reimbursementId}}"] }
+          }
+        },
+        {
+          "name": "Update Reimbursement",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/reimbursements/{{reimbursementId}}", "host": ["{{baseUrl}}"], "path": ["reimbursements", "{{reimbursementId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentReference\": \"PAY-3001\",\n  \"paymentDate\": \"2026-09-21\",\n  \"paymentAmount\": 5300,\n  \"paymentMethod\": \"Bank Transfer\",\n  \"transactionReference\": \"TXN-99887\",\n  \"paymentRemarks\": \"Updated remarks\",\n  \"processedBy\": {{userId}},\n  \"status\": \"Completed\",\n  \"updatedBy\": {{userId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Reimbursement",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/reimbursements/{{reimbursementId}}", "host": ["{{baseUrl}}"], "path": ["reimbursements", "{{reimbursementId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit Logs",
+      "item": [
+        {
+          "name": "Get Audit Logs (filtered)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs?fromDate=2026-01-01&toDate=2026-12-31&userId={{userId}}&expenseClaimId={{expenseClaimId}}&status=Approved",
+              "host": ["{{baseUrl}}"],
+              "path": ["audit-logs"],
+              "query": [
+                { "key": "fromDate", "value": "2026-01-01" },
+                { "key": "toDate", "value": "2026-12-31" },
+                { "key": "userId", "value": "{{userId}}" },
+                { "key": "expenseClaimId", "value": "{{expenseClaimId}}" },
+                { "key": "status", "value": "Approved" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

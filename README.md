@@ -1,6 +1,6 @@
 # Expense Reimbursement Node.js API
 
-Simple Node.js + Express + SQL Server implementation for the 12-table Expense Reimbursement application.
+Node.js + Express + SQL Server implementation for the 12-table Expense Reimbursement application, using Sequelize as the ORM.
 
 ## Architecture
 
@@ -10,26 +10,18 @@ bin/www
    v
 app.js
    |
-   +-- controller/
-   |      |
-   |      +-- expenseController.js
-   |      +-- approvalController.js
-   |      +-- reimbursementController.js
-   |      +-- reportController.js
+   +-- controller/     (Express routers)
    |
-   +-- services/
-   |      |
-   |      +-- expenseService.js
-   |      +-- approvalService.js
-   |      +-- reimbursementService.js
-   |      +-- reportService.js
+   +-- services/        (business logic, built on the Sequelize models)
+   |
+   +-- models/           (Sequelize model definitions + associations, models/index.js)
    |
    +-- utils/
           |
-          +-- db.js
-          +-- queryExecutor.js
-          +-- expenseQueries.js
+          +-- sequelize.js   (Sequelize instance / DB connection)
 ```
+
+Every table has a Sequelize model in `models/`, with associations (belongsTo/hasMany) wired up in `models/index.js`. Services query through these models instead of raw SQL.
 
 ## Prerequisites
 
@@ -129,6 +121,84 @@ POST /expenses/:id/payment
 ```text
 GET /reports/expenses
 ```
+
+### Master data (Users, Departments, Projects, Expense Categories, Policy Rules, Approval Rules)
+
+```text
+POST   /users
+GET    /users
+GET    /users/:id
+PUT    /users/:id
+DELETE /users/:id
+
+POST   /departments
+GET    /departments
+GET    /departments/:id
+PUT    /departments/:id
+DELETE /departments/:id
+
+POST   /projects
+GET    /projects
+GET    /projects/:id
+PUT    /projects/:id
+DELETE /projects/:id
+
+POST   /expense-categories
+GET    /expense-categories
+GET    /expense-categories/:id
+PUT    /expense-categories/:id
+DELETE /expense-categories/:id
+
+POST   /policy-rules
+GET    /policy-rules
+GET    /policy-rules/:id
+PUT    /policy-rules/:id
+DELETE /policy-rules/:id
+
+POST   /approval-rules
+GET    /approval-rules
+GET    /approval-rules/:id
+PUT    /approval-rules/:id
+DELETE /approval-rules/:id
+```
+
+### Expense items, receipts and reimbursements (standalone CRUD)
+
+```text
+POST   /expense-items
+GET    /expense-items?expenseClaimId=1
+GET    /expense-items/:id
+PUT    /expense-items/:id
+DELETE /expense-items/:id
+
+POST   /expense-receipts
+GET    /expense-receipts?expenseClaimId=1
+GET    /expense-receipts/:id
+PUT    /expense-receipts/:id
+DELETE /expense-receipts/:id
+
+POST   /reimbursements
+GET    /reimbursements?expenseClaimId=1
+GET    /reimbursements/:id
+PUT    /reimbursements/:id
+DELETE /reimbursements/:id
+```
+
+### Audit logs (filter-only)
+
+```text
+GET /audit-logs?fromDate=&toDate=&userId=&expenseClaimId=&status=
+```
+
+All filters are optional.
+
+### Approval history (filter-only)
+
+```text
+GET /approvals/history?fromDate=&toDate=&status=&approverId=&expenseClaimId=
+```
+
+All filters are optional.
 
 ## Create Expense Example
 
@@ -259,36 +329,16 @@ middleware/authMiddleware.js
 
 and apply it at the route level or globally.
 
-## Stored Procedures
+## Database access (Sequelize)
 
-The current implementation keeps most SQL in:
+All data access goes through Sequelize models in `models/`, connected via the instance in `utils/sequelize.js` (SQL Server dialect, using the `tedious` driver, configured from the same `.env` variables as before).
 
-```text
-utils/expenseQueries.js
-```
-
-and provides:
-
-```text
-utils/queryExecutor.js
-```
-
-for both direct SQL and stored procedures.
-
-A stored procedure can be called like:
+To query a table directly from a service:
 
 ```js
-const { executeStoredProcedure } = require('../utils/queryExecutor');
+const { ExpenseClaim } = require('../models');
 
-const result = await executeStoredProcedure(
-  'sp_GetExpenseReport',
-  {
-    FromDate: {
-      type: db.sql.Date,
-      value: '2026-09-01'
-    }
-  }
-);
+const claim = await ExpenseClaim.findByPk(1);
 ```
 
-This lets you gradually move complex queries into SQL Server stored procedures without changing the controller/service architecture.
+Associations between tables (e.g. an expense claim's employee, items, and receipts) are defined once in `models/index.js` and can be eager-loaded with `include`.

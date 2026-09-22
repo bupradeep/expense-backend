@@ -11,7 +11,7 @@ router.post('/:id/payment', async (req, res, next) => {
       req.body
     );
 
-    res.json({ success: true, data: result });
+    res.json(result);
   } catch (error) {
     next(error);
   }

@@ -2,7 +2,7 @@
 
 const http = require('http');
 const app = require('../app');
-const db = require('../utils/db');
+const { sequelize } = require('../models');
 
 const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
@@ -11,7 +11,7 @@ const server = http.createServer(app);
 
 async function start() {
   try {
-    await db.connect();
+    await sequelize.authenticate();
     server.listen(port);
     server.on('error', onError);
     server.on('listening', onListening);

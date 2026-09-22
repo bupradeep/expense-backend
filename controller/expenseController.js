@@ -7,7 +7,7 @@ const expenseService = require('../services/expenseService');
 router.post('/', async (req, res, next) => {
   try {
     const result = await expenseService.createExpense(req.body);
-    res.status(201).json({ success: true, data: result });
+    res.status(201).json(result);
   } catch (error) {
     next(error);
   }
@@ -17,7 +17,7 @@ router.post('/', async (req, res, next) => {
 router.get('/', async (req, res, next) => {
   try {
     const result = await expenseService.getExpenses(req.query);
-    res.json({ success: true, data: result });
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -27,7 +27,7 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     const result = await expenseService.getExpenseById(req.params.id);
-    res.json({ success: true, data: result });
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -41,7 +41,7 @@ router.put('/:id', async (req, res, next) => {
       req.body
     );
 
-    res.json({ success: true, data: result });
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -55,7 +55,7 @@ router.delete('/:id', async (req, res, next) => {
       req.body
     );
 
-    res.json({ success: true, data: result });
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -69,7 +69,7 @@ router.post('/:id/submit', async (req, res, next) => {
       req.body
     );
 
-    res.json({ success: true, data: result });
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -79,7 +79,7 @@ router.post('/:id/submit', async (req, res, next) => {
 router.get('/:id/history', async (req, res, next) => {
   try {
     const result = await expenseService.getExpenseHistory(req.params.id);
-    res.json({ success: true, data: result });
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -89,7 +89,7 @@ router.get('/:id/history', async (req, res, next) => {
 router.get('/:id/receipts', async (req, res, next) => {
   try {
     const result = await expenseService.getReceipts(req.params.id);
-    res.json({ success: true, data: result });
+    res.json(result);
   } catch (error) {
     next(error);
   }
