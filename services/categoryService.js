@@ -1,7 +1,10 @@
+const { Op } = require('sequelize');
 const { ExpenseCategory } = require('../models');
 
 async function createCategory(data) {
   if (!data.categoryName) throw createError(400, 'categoryName is required');
+
+  await assertNoDuplicate(data);
 
   return ExpenseCategory.create({
     CategoryName: data.categoryName,
@@ -28,6 +31,8 @@ async function updateCategory(id, data) {
 
   if (!data.categoryName) throw createError(400, 'categoryName is required');
 
+  await assertNoDuplicate(data, id);
+
   await category.update({
     CategoryName: data.categoryName,
     IsActive: data.isActive ?? category.IsActive
@@ -42,6 +47,20 @@ async function deleteCategory(id) {
   await category.destroy();
 
   return { message: 'Expense category deleted successfully' };
+}
+
+async function assertNoDuplicate(data, excludeCategoryId) {
+  const where = { CategoryName: data.categoryName };
+
+  if (excludeCategoryId) {
+    where.CategoryId = { [Op.ne]: excludeCategoryId };
+  }
+
+  const existing = await ExpenseCategory.findOne({ where });
+
+  if (existing) {
+    throw createError(409, 'An expense category with this categoryName already exists');
+  }
 }
 
 function createError(status, message) {

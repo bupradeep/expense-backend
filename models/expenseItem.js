@@ -23,10 +23,6 @@ const ExpenseItem = sequelize.define('ExpenseItem', {
     type: DataTypes.DECIMAL(18, 2),
     allowNull: false
   },
-  Currency: {
-    type: DataTypes.STRING(10),
-    allowNull: true
-  },
   MerchantName: {
     type: DataTypes.STRING(150),
     allowNull: true

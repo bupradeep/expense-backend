@@ -34,7 +34,6 @@ async function getExpenseReport(filters) {
     ClientName: claim.Project ? claim.Project.ClientName : null,
     CostCenter: claim.Project ? claim.Project.CostCenter : null,
     TotalAmount: claim.TotalAmount,
-    Currency: claim.Currency,
     Status: claim.Status
   }));
 }

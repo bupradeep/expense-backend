@@ -23,10 +23,6 @@ const PolicyRule = sequelize.define('PolicyRule', {
     type: DataTypes.STRING(50),
     allowNull: false
   },
-  Currency: {
-    type: DataTypes.STRING(10),
-    allowNull: true
-  },
   IsReceiptRequired: {
     type: DataTypes.BOOLEAN,
     allowNull: true

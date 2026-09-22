@@ -12,6 +12,9 @@ const ApprovalHistory = require('./approvalHistory');
 const AuditLog = require('./auditLog');
 const Reimbursement = require('./reimbursement');
 
+User.belongsTo(Department, { foreignKey: 'DepartmentId' });
+Department.hasMany(User, { foreignKey: 'DepartmentId' });
+
 ExpenseClaim.belongsTo(User, { foreignKey: 'EmployeeId', as: 'Employee' });
 ExpenseClaim.belongsTo(Department, { foreignKey: 'DepartmentId' });
 ExpenseClaim.belongsTo(Project, { foreignKey: 'ProjectId' });

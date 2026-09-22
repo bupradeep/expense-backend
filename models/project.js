@@ -11,6 +11,10 @@ const Project = sequelize.define('Project', {
     type: DataTypes.STRING(150),
     allowNull: false
   },
+  ProjectCode: {
+    type: DataTypes.STRING(50),
+    allowNull: false
+  },
   ClientName: {
     type: DataTypes.STRING(150),
     allowNull: true

@@ -32,10 +32,6 @@ const ExpenseClaim = sequelize.define('ExpenseClaim', {
     allowNull: false,
     defaultValue: 0
   },
-  Currency: {
-    type: DataTypes.STRING(10),
-    allowNull: true
-  },
   BusinessPurpose: {
     type: DataTypes.STRING(500),
     allowNull: false

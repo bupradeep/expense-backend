@@ -8,7 +8,6 @@ async function createPolicyRule(data) {
     PolicyName: data.policyName,
     MaximumAmount: data.maximumAmount,
     LimitType: data.limitType,
-    Currency: data.currency || 'INR',
     IsReceiptRequired: data.isReceiptRequired ?? true,
     IsActive: data.isActive ?? true
   });
@@ -37,7 +36,6 @@ async function updatePolicyRule(id, data) {
     PolicyName: data.policyName,
     MaximumAmount: data.maximumAmount,
     LimitType: data.limitType,
-    Currency: data.currency || 'INR',
     IsReceiptRequired: data.isReceiptRequired ?? true,
     IsActive: data.isActive ?? true
   });

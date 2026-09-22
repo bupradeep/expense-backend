@@ -43,7 +43,7 @@
             "url": { "raw": "{{baseUrl}}/expenses", "host": ["{{baseUrl}}"], "path": ["expenses"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"claimNumber\": \"EXP-2001\",\n  \"employeeId\": {{employeeId}},\n  \"departmentId\": {{departmentId}},\n  \"projectId\": {{projectId}},\n  \"claimDate\": \"2026-09-18\",\n  \"currency\": \"INR\",\n  \"businessPurpose\": \"Client meeting\",\n  \"location\": \"Bangalore\",\n  \"paymentMethod\": \"Credit Card\",\n  \"remarks\": \"Client visit\",\n  \"createdBy\": {{userId}},\n  \"items\": [\n    {\n      \"categoryId\": {{categoryId}},\n      \"expenseDate\": \"2026-09-18\",\n      \"amount\": 4500,\n      \"currency\": \"INR\",\n      \"merchantName\": \"ABC Hotel\",\n      \"description\": \"Hotel stay\",\n      \"businessPurpose\": \"Client meeting\",\n      \"paymentMethod\": \"Credit Card\"\n    },\n    {\n      \"categoryId\": {{categoryId}},\n      \"expenseDate\": \"2026-09-18\",\n      \"amount\": 800,\n      \"currency\": \"INR\",\n      \"merchantName\": \"XYZ Restaurant\",\n      \"description\": \"Dinner\",\n      \"businessPurpose\": \"Client meeting\",\n      \"paymentMethod\": \"Credit Card\"\n    }\n  ]\n}"
+              "raw": "{\n  \"claimNumber\": \"EXP-2001\",\n  \"employeeId\": {{employeeId}},\n  \"departmentId\": {{departmentId}},\n  \"projectId\": {{projectId}},\n  \"claimDate\": \"2026-09-18\",\n  \"businessPurpose\": \"Client meeting\",\n  \"location\": \"Bangalore\",\n  \"paymentMethod\": \"Credit Card\",\n  \"remarks\": \"Client visit\",\n  \"createdBy\": {{userId}},\n  \"items\": [\n    {\n      \"categoryId\": {{categoryId}},\n      \"expenseDate\": \"2026-09-18\",\n      \"amount\": 4500,\n      \"merchantName\": \"ABC Hotel\",\n      \"description\": \"Hotel stay\",\n      \"businessPurpose\": \"Client meeting\",\n      \"paymentMethod\": \"Credit Card\"\n    },\n    {\n      \"categoryId\": {{categoryId}},\n      \"expenseDate\": \"2026-09-18\",\n      \"amount\": 800,\n      \"merchantName\": \"XYZ Restaurant\",\n      \"description\": \"Dinner\",\n      \"businessPurpose\": \"Client meeting\",\n      \"paymentMethod\": \"Credit Card\"\n    }\n  ]\n}"
             }
           }
         },
@@ -78,7 +78,7 @@
             "url": { "raw": "{{baseUrl}}/expenses/{{expenseClaimId}}", "host": ["{{baseUrl}}"], "path": ["expenses", "{{expenseClaimId}}"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"businessPurpose\": \"Client meeting - updated\",\n  \"location\": \"Bangalore\",\n  \"paymentMethod\": \"Credit Card\",\n  \"remarks\": \"Updated remarks\",\n  \"updatedBy\": {{userId}},\n  \"items\": [\n    {\n      \"categoryId\": {{categoryId}},\n      \"expenseDate\": \"2026-09-18\",\n      \"amount\": 5000,\n      \"currency\": \"INR\",\n      \"merchantName\": \"ABC Hotel\",\n      \"description\": \"Hotel stay\",\n      \"businessPurpose\": \"Client meeting\",\n      \"paymentMethod\": \"Credit Card\"\n    }\n  ]\n}"
+              "raw": "{\n  \"businessPurpose\": \"Client meeting - updated\",\n  \"location\": \"Bangalore\",\n  \"paymentMethod\": \"Credit Card\",\n  \"remarks\": \"Updated remarks\",\n  \"updatedBy\": {{userId}},\n  \"items\": [\n    {\n      \"categoryId\": {{categoryId}},\n      \"expenseDate\": \"2026-09-18\",\n      \"amount\": 5000,\n      \"merchantName\": \"ABC Hotel\",\n      \"description\": \"Hotel stay\",\n      \"businessPurpose\": \"Client meeting\",\n      \"paymentMethod\": \"Credit Card\"\n    }\n  ]\n}"
             }
           }
         },
@@ -337,7 +337,7 @@
             "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"projectName\": \"Client Onboarding\",\n  \"clientName\": \"Acme Corp\",\n  \"costCenter\": \"CC-100\"\n}"
+              "raw": "{\n  \"projectName\": \"Client Onboarding\",\n  \"projectCode\": \"PRJ-100\",\n  \"clientName\": \"Acme Corp\",\n  \"costCenter\": \"CC-100\"\n}"
             }
           }
         },
@@ -363,7 +363,7 @@
             "url": { "raw": "{{baseUrl}}/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["projects", "{{projectId}}"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"projectName\": \"Client Onboarding Phase 2\",\n  \"clientName\": \"Acme Corp\",\n  \"costCenter\": \"CC-100\"\n}"
+              "raw": "{\n  \"projectName\": \"Client Onboarding Phase 2\",\n  \"projectCode\": \"PRJ-100\",\n  \"clientName\": \"Acme Corp\",\n  \"costCenter\": \"CC-100\"\n}"
             }
           }
         },
@@ -431,7 +431,7 @@
             "url": { "raw": "{{baseUrl}}/policy-rules", "host": ["{{baseUrl}}"], "path": ["policy-rules"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"categoryId\": {{categoryId}},\n  \"policyName\": \"Hotel Stay Limit\",\n  \"maximumAmount\": 5000,\n  \"limitType\": \"Per Day\",\n  \"currency\": \"INR\",\n  \"isReceiptRequired\": true,\n  \"isActive\": true\n}"
+              "raw": "{\n  \"categoryId\": {{categoryId}},\n  \"policyName\": \"Hotel Stay Limit\",\n  \"maximumAmount\": 5000,\n  \"limitType\": \"Per Day\",\n  \"isReceiptRequired\": true,\n  \"isActive\": true\n}"
             }
           }
         },
@@ -457,7 +457,7 @@
             "url": { "raw": "{{baseUrl}}/policy-rules/{{policyRuleId}}", "host": ["{{baseUrl}}"], "path": ["policy-rules", "{{policyRuleId}}"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"categoryId\": {{categoryId}},\n  \"policyName\": \"Hotel Stay Limit\",\n  \"maximumAmount\": 6000,\n  \"limitType\": \"Per Day\",\n  \"currency\": \"INR\",\n  \"isReceiptRequired\": true,\n  \"isActive\": true\n}"
+              "raw": "{\n  \"categoryId\": {{categoryId}},\n  \"policyName\": \"Hotel Stay Limit\",\n  \"maximumAmount\": 6000,\n  \"limitType\": \"Per Day\",\n  \"isReceiptRequired\": true,\n  \"isActive\": true\n}"
             }
           }
         },
@@ -531,7 +531,7 @@
             "url": { "raw": "{{baseUrl}}/expense-items", "host": ["{{baseUrl}}"], "path": ["expense-items"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"expenseClaimId\": {{expenseClaimId}},\n  \"categoryId\": {{categoryId}},\n  \"expenseDate\": \"2026-09-18\",\n  \"amount\": 1200,\n  \"currency\": \"INR\",\n  \"merchantName\": \"Cafe Coffee Day\",\n  \"description\": \"Client breakfast\",\n  \"businessPurpose\": \"Client meeting\",\n  \"paymentMethod\": \"Credit Card\",\n  \"isPolicyException\": false,\n  \"createdBy\": {{userId}}\n}"
+              "raw": "{\n  \"expenseClaimId\": {{expenseClaimId}},\n  \"categoryId\": {{categoryId}},\n  \"expenseDate\": \"2026-09-18\",\n  \"amount\": 1200,\n  \"merchantName\": \"Cafe Coffee Day\",\n  \"description\": \"Client breakfast\",\n  \"businessPurpose\": \"Client meeting\",\n  \"paymentMethod\": \"Credit Card\",\n  \"isPolicyException\": false,\n  \"createdBy\": {{userId}}\n}"
             }
           }
         },
@@ -562,7 +562,7 @@
             "url": { "raw": "{{baseUrl}}/expense-items/{{expenseItemId}}", "host": ["{{baseUrl}}"], "path": ["expense-items", "{{expenseItemId}}"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"categoryId\": {{categoryId}},\n  \"expenseDate\": \"2026-09-18\",\n  \"amount\": 1500,\n  \"currency\": \"INR\",\n  \"merchantName\": \"Cafe Coffee Day\",\n  \"description\": \"Client breakfast\",\n  \"businessPurpose\": \"Client meeting\",\n  \"paymentMethod\": \"Credit Card\",\n  \"isPolicyException\": false,\n  \"updatedBy\": {{userId}}\n}"
+              "raw": "{\n  \"categoryId\": {{categoryId}},\n  \"expenseDate\": \"2026-09-18\",\n  \"amount\": 1500,\n  \"merchantName\": \"Cafe Coffee Day\",\n  \"description\": \"Client breakfast\",\n  \"businessPurpose\": \"Client meeting\",\n  \"paymentMethod\": \"Credit Card\",\n  \"isPolicyException\": false,\n  \"updatedBy\": {{userId}}\n}"
             }
           }
         },

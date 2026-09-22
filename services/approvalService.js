@@ -80,7 +80,6 @@ async function getPendingApprovals(filters) {
       DepartmentId: claim.DepartmentId,
       DepartmentName: claim.Department.DepartmentName,
       TotalAmount: claim.TotalAmount,
-      Currency: claim.Currency,
       BusinessPurpose: claim.BusinessPurpose,
       Status: claim.Status,
       SubmittedAt: claim.SubmittedAt,

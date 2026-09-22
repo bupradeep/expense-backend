@@ -1,33 +1,53 @@
 const { Op } = require('sequelize');
-const { User } = require('../models');
+const { User, Department } = require('../models');
+
+const ROLES = ['Employee', 'Admin', 'Manager', 'Finance', 'FinanceHead', 'DepartmentHead'];
+const DEFAULT_ROLE = 'Employee';
 
 async function createUser(data) {
   if (!data.fullName) throw createError(400, 'FullName is required');
   if (!data.email) throw createError(400, 'Email is required');
   if (!data.employeeCode) throw createError(400, 'EmployeeCode is required');
-  if (!data.role) throw createError(400, 'Role is required');
   if (!data.employeeObjectId) throw createError(400, 'Employee Object Id is required');
 
+  const role = data.role || DEFAULT_ROLE;
+
+  validateRole(role);
+  await validateDepartment(data.departmentId);
   await assertNoDuplicate(data);
 
   const user = await User.create({
     FullName: data.fullName,
     Email: data.email,
     EmployeeCode: data.employeeCode,
-    Role: data.role,
+    Role: role,
     EmployeeObjectId: data.employeeObjectId,
+    DepartmentId: data.departmentId || null,
     IsActive: data.isActive ?? true
   });
+
+  return getUserById(user.UserId);
+}
+
+async function getUsers() {
+  return User.findAll({ include: [{ model: Department }], order: [['UserId', 'ASC']] });
+}
+
+async function getUserById(id) {
+  const user = await User.findByPk(id, { include: [{ model: Department }] });
+
+  if (!user) {
+    throw createError(404, 'User not found');
+  }
 
   return user;
 }
 
-async function getUsers() {
-  return User.findAll({ order: [['UserId', 'ASC']] });
-}
-
-async function getUserById(id) {
-  const user = await User.findByPk(id);
+async function getUserByEmployeeObjectId(employeeObjectId) {
+  const user = await User.findOne({
+    where: { EmployeeObjectId: employeeObjectId },
+    include: [{ model: Department }]
+  });
 
   if (!user) {
     throw createError(404, 'User not found');
@@ -42,21 +62,42 @@ async function updateUser(id, data) {
   if (!data.fullName) throw createError(400, 'FullName is required');
   if (!data.email) throw createError(400, 'Email is required');
   if (!data.employeeCode) throw createError(400, 'EmployeeCode is required');
-  if (!data.role) throw createError(400, 'Role is required');
   if (!data.employeeObjectId) throw createError(400, 'Employee Object Id is required');
 
+  const role = data.role || user.Role;
+  const departmentId = data.departmentId || user.DepartmentId;
+
+  validateRole(role);
+  await validateDepartment(departmentId);
   await assertNoDuplicate(data, id);
 
   await user.update({
     FullName: data.fullName,
     Email: data.email,
     EmployeeCode: data.employeeCode,
-    Role: data.role,
+    Role: role,
     EmployeeObjectId: data.employeeObjectId,
+    DepartmentId: departmentId || null,
     IsActive: data.isActive ?? user.IsActive
   });
 
-  return user;
+  return getUserById(id);
+}
+
+function validateRole(role) {
+  if (!ROLES.includes(role)) {
+    throw createError(400, `Role must be one of: ${ROLES.join(', ')}`);
+  }
+}
+
+async function validateDepartment(departmentId) {
+  if (!departmentId) return;
+
+  const department = await Department.findByPk(departmentId);
+
+  if (!department) {
+    throw createError(400, 'departmentId does not match an existing department');
+  }
 }
 
 async function deleteUser(id) {
@@ -105,6 +146,7 @@ module.exports = {
   createUser,
   getUsers,
   getUserById,
+  getUserByEmployeeObjectId,
   updateUser,
   deleteUser
 };

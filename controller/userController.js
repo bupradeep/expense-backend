@@ -21,6 +21,15 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+router.get('/by-employee-object-id/:employeeObjectId', async (req, res, next) => {
+  try {
+    const result = await userService.getUserByEmployeeObjectId(req.params.employeeObjectId);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/:id', async (req, res, next) => {
   try {
     const result = await userService.getUserById(req.params.id);
