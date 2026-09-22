@@ -9,7 +9,9 @@ async function createPolicyRule(data) {
     MaximumAmount: data.maximumAmount,
     LimitType: data.limitType,
     IsReceiptRequired: data.isReceiptRequired ?? true,
-    IsActive: data.isActive ?? true
+    IsActive: data.isActive ?? true,
+    CreatedAt: new Date(),
+    CreatedBy: data.createdBy || null
   });
 }
 
@@ -37,7 +39,9 @@ async function updatePolicyRule(id, data) {
     MaximumAmount: data.maximumAmount,
     LimitType: data.limitType,
     IsReceiptRequired: data.isReceiptRequired ?? true,
-    IsActive: data.isActive ?? true
+    IsActive: data.isActive ?? true,
+    UpdatedAt: new Date(),
+    UpdatedBy: data.updatedBy || null
   });
 
   return policyRule;

@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
 const { ExpenseCategory } = require('../models');
+const { getPagination, toPagedResult } = require('../utils/pagination');
 
 async function createCategory(data) {
   if (!data.categoryName) throw createError(400, 'categoryName is required');
@@ -8,12 +9,26 @@ async function createCategory(data) {
 
   return ExpenseCategory.create({
     CategoryName: data.categoryName,
-    IsActive: data.isActive ?? true
+    IsActive: data.isActive ?? true,
+    CreatedAt: new Date(),
+    CreatedBy: data.createdBy || null
   });
 }
 
-async function getCategories() {
-  return ExpenseCategory.findAll({ order: [['CategoryId', 'ASC']] });
+async function getCategories(query = {}) {
+  const pagination = getPagination(query);
+
+  if (!pagination) {
+    return ExpenseCategory.findAll({ order: [['CategoryId', 'ASC']] });
+  }
+
+  const { count, rows } = await ExpenseCategory.findAndCountAll({
+    order: [['CategoryId', 'ASC']],
+    limit: pagination.limit,
+    offset: pagination.offset
+  });
+
+  return toPagedResult(pagination.page, pagination.pageSize, count, rows);
 }
 
 async function getCategoryById(id) {
@@ -35,7 +50,9 @@ async function updateCategory(id, data) {
 
   await category.update({
     CategoryName: data.categoryName,
-    IsActive: data.isActive ?? category.IsActive
+    IsActive: data.isActive ?? category.IsActive,
+    UpdatedAt: new Date(),
+    UpdatedBy: data.updatedBy || null
   });
 
   return category;

@@ -13,4 +13,14 @@ router.get('/expenses', async (req, res, next) => {
   }
 });
 
+// GET /reports/dashboard
+router.get('/dashboard', async (req, res, next) => {
+  try {
+    const result = await reportService.getDashboardSummary(req.query);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

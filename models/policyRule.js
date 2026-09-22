@@ -30,6 +30,22 @@ const PolicyRule = sequelize.define('PolicyRule', {
   IsActive: {
     type: DataTypes.BOOLEAN,
     allowNull: true
+  },
+  CreatedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  UpdatedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  CreatedBy: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  UpdatedBy: {
+    type: DataTypes.INTEGER,
+    allowNull: true
   }
 }, {
   tableName: 'PolicyRules',

@@ -1,4 +1,5 @@
 const { ExpenseClaim, Reimbursement, AuditLog } = require('../models');
+const notificationService = require('./notificationService');
 
 async function processPayment(id, data) {
   if (!data.processedBy) {
@@ -51,6 +52,8 @@ async function processPayment(id, data) {
     CreatedAt: new Date(),
     CreatedBy: data.processedBy
   });
+
+  await notificationService.notifyReimbursed(id, data.paymentAmount || claim.TotalAmount);
 
   return {
     message: 'Reimbursement processed successfully',

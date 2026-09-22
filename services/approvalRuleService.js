@@ -1,4 +1,7 @@
 const { ApprovalRule } = require('../models');
+const { getPagination, toPagedResult } = require('../utils/pagination');
+
+const VALID_APPROVER_ROLES = ['Manager', 'DepartmentHead', 'Finance'];
 
 async function createApprovalRule(data) {
   validate(data);
@@ -8,13 +11,26 @@ async function createApprovalRule(data) {
     MaximumAmount: data.maximumAmount ?? null,
     ApprovalLevel: data.approvalLevel,
     ApproverRole: data.approverRole,
-    SequenceNo: data.sequenceNo,
-    IsActive: data.isActive ?? true
+    IsActive: data.isActive ?? true,
+    CreatedAt: new Date(),
+    CreatedBy: data.createdBy || null
   });
 }
 
-async function getApprovalRules() {
-  return ApprovalRule.findAll({ order: [['ApprovalRuleId', 'ASC']] });
+async function getApprovalRules(query = {}) {
+  const pagination = getPagination(query);
+
+  if (!pagination) {
+    return ApprovalRule.findAll({ order: [['ApprovalRuleId', 'ASC']] });
+  }
+
+  const { count, rows } = await ApprovalRule.findAndCountAll({
+    order: [['ApprovalRuleId', 'ASC']],
+    limit: pagination.limit,
+    offset: pagination.offset
+  });
+
+  return toPagedResult(pagination.page, pagination.pageSize, count, rows);
 }
 
 async function getApprovalRuleById(id) {
@@ -36,8 +52,9 @@ async function updateApprovalRule(id, data) {
     MaximumAmount: data.maximumAmount ?? null,
     ApprovalLevel: data.approvalLevel,
     ApproverRole: data.approverRole,
-    SequenceNo: data.sequenceNo,
-    IsActive: data.isActive ?? true
+    IsActive: data.isActive ?? true,
+    UpdatedAt: new Date(),
+    UpdatedBy: data.updatedBy || null
   });
 
   return approvalRule;
@@ -57,7 +74,9 @@ function validate(data) {
   }
   if (!data.approvalLevel) throw createError(400, 'approvalLevel is required');
   if (!data.approverRole) throw createError(400, 'approverRole is required');
-  if (!data.sequenceNo) throw createError(400, 'sequenceNo is required');
+  if (!VALID_APPROVER_ROLES.includes(data.approverRole)) {
+    throw createError(400, `approverRole must be one of: ${VALID_APPROVER_ROLES.join(', ')}`);
+  }
 }
 
 function createError(status, message) {

@@ -1,12 +1,17 @@
+const { Op } = require('sequelize');
 const { Department } = require('../models');
 const { getPagination, toPagedResult } = require('../utils/pagination');
 
 async function createDepartment(data) {
   if (!data.departmentName) throw createError(400, 'departmentName is required');
 
+  await assertNoDuplicate(data);
+
   return Department.create({
     DepartmentName: data.departmentName,
-    IsActive: data.isActive ?? true
+    IsActive: data.isActive ?? true,
+    CreatedAt: new Date(),
+    CreatedBy: data.createdBy || null
   });
 }
 
@@ -41,9 +46,13 @@ async function updateDepartment(id, data) {
 
   if (!data.departmentName) throw createError(400, 'departmentName is required');
 
+  await assertNoDuplicate(data, id);
+
   await department.update({
     DepartmentName: data.departmentName,
-    IsActive: data.isActive ?? department.IsActive
+    IsActive: data.isActive ?? department.IsActive,
+    UpdatedAt: new Date(),
+    UpdatedBy: data.updatedBy || null
   });
 
   return department;
@@ -55,6 +64,20 @@ async function deleteDepartment(id) {
   await department.destroy();
 
   return { message: 'Department deleted successfully' };
+}
+
+async function assertNoDuplicate(data, excludeDepartmentId) {
+  const where = { DepartmentName: data.departmentName };
+
+  if (excludeDepartmentId) {
+    where.DepartmentId = { [Op.ne]: excludeDepartmentId };
+  }
+
+  const existing = await Department.findOne({ where });
+
+  if (existing) {
+    throw createError(409, 'A department with this name already exists');
+  }
 }
 
 function createError(status, message) {

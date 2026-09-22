@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
-const { AuditLog, User } = require('../models');
+const { AuditLog, User, ExpenseClaim } = require('../models');
+const { getPagination, toPagedResult } = require('../utils/pagination');
 
 async function getAuditLogs(filters = {}) {
   const where = {};
@@ -13,12 +14,32 @@ async function getAuditLogs(filters = {}) {
   if (filters.userId) where.UserId = filters.userId;
   if (filters.expenseClaimId) where.ExpenseClaimId = filters.expenseClaimId;
   if (filters.status) where.NewStatus = filters.status;
+  if (filters.action) where.Action = filters.action;
 
-  return AuditLog.findAll({
+  const claimWhere = {};
+  if (filters.claimNumber) claimWhere.ClaimNumber = { [Op.like]: `%${filters.claimNumber}%` };
+
+  const include = [
+    { model: User },
+    { model: ExpenseClaim, attributes: ['ClaimNumber'], required: !!filters.claimNumber, where: claimWhere }
+  ];
+
+  const pagination = getPagination(filters);
+
+  if (!pagination) {
+    return AuditLog.findAll({ where, include, order: [['CreatedAt', 'DESC']] });
+  }
+
+  const { count, rows } = await AuditLog.findAndCountAll({
     where,
-    include: [{ model: User }],
-    order: [['CreatedAt', 'DESC']]
+    include,
+    order: [['CreatedAt', 'DESC']],
+    limit: pagination.limit,
+    offset: pagination.offset,
+    distinct: true
   });
+
+  return toPagedResult(pagination.page, pagination.pageSize, count, rows);
 }
 
 module.exports = {

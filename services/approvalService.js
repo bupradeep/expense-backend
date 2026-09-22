@@ -8,13 +8,21 @@ const {
   Department
 } = require('../models');
 const { getPagination, toPagedResult } = require('../utils/pagination');
+const notificationService = require('./notificationService');
 
-const ROLE_STATUS_MAP = {
-  Manager: 'Submitted',
-  DepartmentHead: 'Department Head Review',
-  Finance: 'Finance Review',
-  FinanceHead: 'Finance Head Review'
-};
+// Single source of truth for the approval chain. Level 1 (Manager) is always
+// required and is entered directly by submitExpense. Levels 2+ only apply if
+// an active ApprovalRule exists for the claim's amount at that level, letting
+// smaller claims skip straight to 'Approved' after the Manager signs off.
+const APPROVAL_STAGES = [
+  { level: 1, role: 'Manager', status: 'Submitted', departmentScoped: true },
+  { level: 2, role: 'DepartmentHead', status: 'Department Head Review', departmentScoped: true },
+  { level: 3, role: 'Finance', status: 'Finance Review', departmentScoped: false }
+];
+
+const STAGE_BY_ROLE = Object.fromEntries(APPROVAL_STAGES.map((stage) => [stage.role, stage]));
+const STAGE_BY_STATUS = Object.fromEntries(APPROVAL_STAGES.map((stage) => [stage.status, stage]));
+const PENDING_STATUSES = APPROVAL_STAGES.map((stage) => stage.status);
 
 async function getApprovalHistory(filters = {}) {
   const where = {};
@@ -29,20 +37,31 @@ async function getApprovalHistory(filters = {}) {
   if (filters.approverId) where.ApproverId = filters.approverId;
   if (filters.expenseClaimId) where.ExpenseClaimId = filters.expenseClaimId;
 
-  return ApprovalHistory.findAll({
-    where,
-    include: [{ model: User, as: 'Approver' }],
-    order: [['CreatedAt', 'DESC']]
-  });
-}
+  const claimWhere = {};
+  if (filters.claimNumber) claimWhere.ClaimNumber = { [Op.like]: `%${filters.claimNumber}%` };
 
-const ALL_PENDING_STATUSES = [
-  'Submitted',
-  'Manager Approved',
-  'Department Head Review',
-  'Finance Review',
-  'Finance Head Review'
-];
+  const include = [
+    { model: User, as: 'Approver' },
+    { model: ExpenseClaim, attributes: ['ClaimNumber'], where: claimWhere }
+  ];
+
+  const pagination = getPagination(filters);
+
+  if (!pagination) {
+    return ApprovalHistory.findAll({ where, include, order: [['CreatedAt', 'DESC']] });
+  }
+
+  const { count, rows } = await ApprovalHistory.findAndCountAll({
+    where,
+    include,
+    order: [['CreatedAt', 'DESC']],
+    limit: pagination.limit,
+    offset: pagination.offset,
+    distinct: true
+  });
+
+  return toPagedResult(pagination.page, pagination.pageSize, count, rows);
+}
 
 async function enrichWithLastApproval(claims) {
   const result = [];
@@ -75,18 +94,21 @@ async function enrichWithLastApproval(claims) {
 async function getPendingApprovals(filters) {
   const pagination = getPagination(filters);
 
-  let statusWhere = { [Op.in]: ALL_PENDING_STATUSES };
+  let where = { Status: { [Op.in]: PENDING_STATUSES } };
 
   if (filters.userId) {
     const approver = await User.findByPk(filters.userId);
-    const requiredStatus = approver ? ROLE_STATUS_MAP[approver.Role] : undefined;
+    const stage = approver ? STAGE_BY_ROLE[approver.Role] : undefined;
 
-    // No status maps to this role (e.g. Admin/Employee), so nothing is pending for them.
-    if (!requiredStatus) {
+    // No stage maps to this role (e.g. Admin/Employee), so nothing is pending for them.
+    if (!stage) {
       return pagination ? toPagedResult(pagination.page, pagination.pageSize, 0, []) : [];
     }
 
-    statusWhere = requiredStatus;
+    where = { Status: stage.status };
+    if (stage.departmentScoped) {
+      where.DepartmentId = approver.DepartmentId;
+    }
   }
 
   const include = [
@@ -96,7 +118,7 @@ async function getPendingApprovals(filters) {
 
   if (!pagination) {
     const claims = await ExpenseClaim.findAll({
-      where: { Status: statusWhere },
+      where,
       include,
       order: [['SubmittedAt', 'ASC']]
     });
@@ -104,7 +126,7 @@ async function getPendingApprovals(filters) {
   }
 
   const { count, rows } = await ExpenseClaim.findAndCountAll({
-    where: { Status: statusWhere },
+    where,
     include,
     order: [['SubmittedAt', 'ASC']],
     limit: pagination.limit,
@@ -147,14 +169,46 @@ async function processApproval(id, data, action) {
     throw createError(404, 'Expense claim not found');
   }
 
-  const approvalLevel = data.approvalLevel || 1;
+  const approver = await User.findByPk(data.approverId);
+
+  if (!approver) {
+    throw createError(400, 'approverId does not match an existing user');
+  }
+
+  // The stage (level, required role, department scoping) is derived entirely from the
+  // claim's own status/amount/department - never trusted from client input - so the
+  // approval level and sequence are resolved automatically rather than passed in.
+  const stage = STAGE_BY_STATUS[claim.Status];
+
+  if (!stage) {
+    throw createError(400, `Claim is not currently awaiting approval (status: ${claim.Status})`);
+  }
+
+  if (approver.Role !== stage.role) {
+    throw createError(403, `Only a ${stage.role} can act on this claim at its current stage`);
+  }
+
+  if (stage.departmentScoped && approver.DepartmentId !== claim.DepartmentId) {
+    throw createError(403, 'You can only act on claims for your own department');
+  }
+
+  const approvalLevel = stage.level;
 
   let newStatus = action;
+  let nextStage = null;
 
   if (action === 'Approved') {
-    const next = await getNextApprovalLevel(claim.TotalAmount, approvalLevel);
+    const nextRole = await getNextStageRole(claim.TotalAmount, approvalLevel);
 
-    newStatus = next ? getStatusForRole(next.ApproverRole) : 'Approved';
+    if (nextRole) {
+      nextStage = STAGE_BY_ROLE[nextRole];
+
+      if (!nextStage) {
+        throw createError(500, `Approval rule configured with unknown role "${nextRole}"`);
+      }
+    }
+
+    newStatus = nextStage ? nextStage.status : 'Approved';
   }
 
   await ApprovalHistory.create({
@@ -187,14 +241,30 @@ async function processApproval(id, data, action) {
     CreatedBy: data.approverId
   });
 
+  if (action === 'Approved') {
+    await notificationService.notifyApproved(id, data.comments);
+
+    if (nextStage) {
+      await notificationService.notifyPendingApproval(
+        id,
+        nextStage.role,
+        nextStage.departmentScoped ? claim.DepartmentId : null
+      );
+    }
+  } else if (action === 'Rejected') {
+    await notificationService.notifyRejected(id, data.comments);
+  } else if (action === 'Sent Back') {
+    await notificationService.notifySentBack(id, data.comments);
+  }
+
   return {
     message: `Claim ${action.toLowerCase()} successfully`,
     status: newStatus
   };
 }
 
-async function getNextApprovalLevel(amount, currentLevel) {
-  return ApprovalRule.findOne({
+async function getNextStageRole(amount, currentLevel) {
+  const rule = await ApprovalRule.findOne({
     where: {
       IsActive: true,
       MinimumAmount: { [Op.lte]: amount },
@@ -202,23 +272,12 @@ async function getNextApprovalLevel(amount, currentLevel) {
         { MaximumAmount: { [Op.gte]: amount } },
         { MaximumAmount: null }
       ],
-      SequenceNo: currentLevel + 1
+      ApprovalLevel: currentLevel + 1
     },
     order: [['ApprovalRuleId', 'ASC']]
   });
-}
 
-function getStatusForRole(role) {
-  switch (role) {
-    case 'DepartmentHead':
-      return 'Department Head Review';
-    case 'Finance':
-      return 'Finance Review';
-    case 'FinanceHead':
-      return 'Finance Head Review';
-    default:
-      return 'Pending Approval';
-  }
+  return rule ? rule.ApproverRole : null;
 }
 
 function createError(status, message) {

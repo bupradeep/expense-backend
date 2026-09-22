@@ -35,6 +35,22 @@ const User = sequelize.define('User', {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: true
+  },
+  CreatedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  UpdatedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  CreatedBy: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  UpdatedBy: {
+    type: DataTypes.INTEGER,
+    allowNull: true
   }
 }, {
   tableName: 'Users',

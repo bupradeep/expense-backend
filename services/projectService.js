@@ -13,7 +13,9 @@ async function createProject(data) {
     ProjectCode: data.projectCode,
     ClientName: data.clientName || null,
     CostCenter: data.costCenter || null,
-    IsActive: data.isActive ?? true
+    IsActive: data.isActive ?? true,
+    CreatedAt: new Date(),
+    CreatedBy: data.createdBy || null
   });
 }
 
@@ -56,7 +58,9 @@ async function updateProject(id, data) {
     ProjectCode: data.projectCode,
     ClientName: data.clientName || null,
     CostCenter: data.costCenter || null,
-    IsActive: data.isActive ?? project.IsActive
+    IsActive: data.isActive ?? project.IsActive,
+    UpdatedAt: new Date(),
+    UpdatedBy: data.updatedBy || null
   });
 
   return project;

@@ -26,6 +26,10 @@ router.get('/history', async (req, res, next) => {
 // POST /approvals/:id/approve
 router.post('/:id/approve', async (req, res, next) => {
   try {
+    // The approver is always the authenticated caller -- never trust a client-supplied
+    // approverId, or any signed-in user could forge another approver's decision.
+    req.body.approverId = req.user.userId;
+
     const result = await approvalService.approveExpense(
       req.params.id,
       req.body
@@ -40,6 +44,8 @@ router.post('/:id/approve', async (req, res, next) => {
 // POST /approvals/:id/reject
 router.post('/:id/reject', async (req, res, next) => {
   try {
+    req.body.approverId = req.user.userId;
+
     const result = await approvalService.rejectExpense(
       req.params.id,
       req.body
@@ -54,6 +60,8 @@ router.post('/:id/reject', async (req, res, next) => {
 // POST /approvals/:id/send-back
 router.post('/:id/send-back', async (req, res, next) => {
   try {
+    req.body.approverId = req.user.userId;
+
     const result = await approvalService.sendBackExpense(
       req.params.id,
       req.body

@@ -2,7 +2,7 @@ const { Op } = require('sequelize');
 const { User, Department } = require('../models');
 const { getPagination, toPagedResult } = require('../utils/pagination');
 
-const ROLES = ['Employee', 'Admin', 'Manager', 'Finance', 'FinanceHead', 'DepartmentHead'];
+const ROLES = ['Employee', 'Admin', 'Manager', 'Finance', 'DepartmentHead'];
 const DEFAULT_ROLE = 'Employee';
 
 async function createUser(data) {
@@ -16,6 +16,7 @@ async function createUser(data) {
   validateRole(role);
   await validateDepartment(data.departmentId);
   await assertNoDuplicate(data);
+  await assertSingleHead(role, data.departmentId);
 
   const user = await User.create({
     FullName: data.fullName,
@@ -24,7 +25,9 @@ async function createUser(data) {
     Role: role,
     EmployeeObjectId: data.employeeObjectId,
     DepartmentId: data.departmentId || null,
-    IsActive: data.isActive ?? true
+    IsActive: data.isActive ?? true,
+    CreatedAt: new Date(),
+    CreatedBy: data.createdBy || null
   });
 
   return getUserById(user.UserId);
@@ -85,6 +88,7 @@ async function updateUser(id, data) {
   validateRole(role);
   await validateDepartment(departmentId);
   await assertNoDuplicate(data, id);
+  await assertSingleHead(role, departmentId, id);
 
   await user.update({
     FullName: data.fullName,
@@ -93,7 +97,9 @@ async function updateUser(id, data) {
     Role: role,
     EmployeeObjectId: data.employeeObjectId,
     DepartmentId: departmentId || null,
-    IsActive: data.isActive ?? user.IsActive
+    IsActive: data.isActive ?? user.IsActive,
+    UpdatedAt: new Date(),
+    UpdatedBy: data.updatedBy || null
   });
 
   return getUserById(id);
@@ -112,6 +118,23 @@ async function validateDepartment(departmentId) {
 
   if (!department) {
     throw createError(400, 'departmentId does not match an existing department');
+  }
+}
+
+async function assertSingleHead(role, departmentId, excludeUserId) {
+  if (role !== 'DepartmentHead' && role !== 'Manager') return;
+
+  if (!departmentId) {
+    throw createError(400, `departmentId is required for the ${role} role`);
+  }
+
+  const where = { Role: role, IsActive: true, DepartmentId: departmentId };
+  if (excludeUserId) where.UserId = { [Op.ne]: excludeUserId };
+
+  const existing = await User.findOne({ where });
+
+  if (existing) {
+    throw createError(409, `A ${role} already exists for this department`);
   }
 }
 

@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 const {
   sequelize,
   ExpenseClaim,
@@ -9,12 +10,21 @@ const {
   User,
   Department,
   Project,
-  ExpenseCategory
+  ExpenseCategory,
+  ExpenseClaimComment
 } = require('../models');
 const { getPagination, toPagedResult } = require('../utils/pagination');
+const notificationService = require('./notificationService');
+
+const COMMENT_ROLE_STATUS_MAP = {
+  Manager: 'Submitted',
+  DepartmentHead: 'Department Head Review',
+  Finance: 'Finance Review'
+};
 
 async function createExpense(data) {
   validateCreateExpense(data);
+  await assertCanCreateClaim(data.employeeId);
 
   return sequelize.transaction(async (transaction) => {
     const claim = await ExpenseClaim.create({
@@ -70,8 +80,19 @@ async function createExpense(data) {
 async function getExpenses(filters) {
   const where = {};
   if (filters.employeeId) where.EmployeeId = filters.employeeId;
-  if (filters.status) where.Status = filters.status;
   if (filters.departmentId) where.DepartmentId = filters.departmentId;
+
+  if (filters.status) {
+    where.Status = filters.status;
+  } else if (filters.excludeDeleted === 'true' || filters.excludeDeleted === true) {
+    where.Status = { [Op.ne]: 'Deleted' };
+  }
+
+  if (filters.fromDate || filters.toDate) {
+    where.ClaimDate = {};
+    if (filters.fromDate) where.ClaimDate[Op.gte] = filters.fromDate;
+    if (filters.toDate) where.ClaimDate[Op.lte] = filters.toDate;
+  }
 
   const include = [
     { model: User, as: 'Employee' },
@@ -108,7 +129,14 @@ async function getExpenseById(id) {
         as: 'Items',
         include: [{ model: ExpenseCategory }]
       },
-      { model: ExpenseReceipt, as: 'Receipts' }
+      { model: ExpenseReceipt, as: 'Receipts' },
+      {
+        model: ExpenseClaimComment,
+        as: 'Comments',
+        include: [{ model: User, as: 'User' }],
+        separate: true,
+        order: [['CreatedAt', 'ASC']]
+      }
     ]
   });
 
@@ -119,8 +147,10 @@ async function getExpenseById(id) {
   return claim;
 }
 
-async function updateExpense(id, data) {
+async function updateExpense(id, data, actor) {
   const existing = await getExpenseById(id);
+
+  assertIsOwnerOrAdmin(existing, actor);
 
   if (existing.Status !== 'Draft' && existing.Status !== 'Sent Back') {
     throw createError(400, 'Only Draft or Sent Back claims can be updated');
@@ -135,10 +165,48 @@ async function updateExpense(id, data) {
     UpdatedBy: data.updatedBy
   }, { where: { ExpenseClaimId: id } });
 
-  if (Array.isArray(data.items)) {
-    await ExpenseItem.destroy({ where: { ExpenseClaimId: id } });
+  let itemChangeSummary = '';
 
-    for (const item of data.items) {
+  if (Array.isArray(data.items)) {
+    // Reconcile in place (matched by position) rather than destroy-all-then-recreate, so that
+    // items which still exist after the edit keep their ExpenseItemId and stay linked to any
+    // receipts already uploaded against them (ExpenseReceipts.ExpenseItemId has a NO_ACTION FK,
+    // so destroying an item that still has receipts would otherwise fail the whole update).
+    const existingItems = await ExpenseItem.findAll({
+      where: { ExpenseClaimId: id },
+      order: [['ExpenseItemId', 'ASC']]
+    });
+
+    const reusableCount = Math.min(existingItems.length, data.items.length);
+    const addedCount = data.items.length - reusableCount;
+    const removedCount = existingItems.length - reusableCount;
+    itemChangeSummary = ` (${reusableCount} updated, ${addedCount} added, ${removedCount} removed)`;
+
+    for (let i = 0; i < reusableCount; i++) {
+      const item = data.items[i];
+      await ExpenseItem.update({
+        CategoryId: item.categoryId,
+        ExpenseDate: item.expenseDate,
+        Amount: item.amount,
+        MerchantName: item.merchantName || null,
+        Description: item.description || null,
+        BusinessPurpose: item.businessPurpose || null,
+        PaymentMethod: item.paymentMethod || null,
+        IsPolicyException: item.isPolicyException || false,
+        PolicyExceptionReason: item.policyExceptionReason || null,
+        UpdatedAt: new Date(),
+        UpdatedBy: data.updatedBy
+      }, { where: { ExpenseItemId: existingItems[i].ExpenseItemId } });
+    }
+
+    if (existingItems.length > reusableCount) {
+      const removedItemIds = existingItems.slice(reusableCount).map((item) => item.ExpenseItemId);
+      await ExpenseReceipt.destroy({ where: { ExpenseItemId: removedItemIds } });
+      await ExpenseItem.destroy({ where: { ExpenseItemId: removedItemIds } });
+    }
+
+    for (let i = reusableCount; i < data.items.length; i++) {
+      const item = data.items[i];
       await ExpenseItem.create({
         ExpenseClaimId: id,
         CategoryId: item.categoryId,
@@ -158,27 +226,57 @@ async function updateExpense(id, data) {
     await recalculateClaimTotal(id);
   }
 
+  await AuditLog.create({
+    UserId: data.updatedBy,
+    ExpenseClaimId: id,
+    Action: 'UPDATE_CLAIM',
+    PreviousStatus: existing.Status,
+    NewStatus: existing.Status,
+    Comments: `Expense claim updated${itemChangeSummary}`,
+    CreatedAt: new Date(),
+    CreatedBy: data.updatedBy
+  });
+
   return getExpenseById(id);
 }
 
-async function deleteExpense(id, data) {
+async function deleteExpense(id, data, actor) {
   const existing = await getExpenseById(id);
+
+  assertIsOwnerOrAdmin(existing, actor);
 
   if (existing.Status !== 'Draft') {
     throw createError(400, 'Only Draft claims can be deleted');
   }
 
+  const deletedBy = data.updatedBy || data.createdBy || null;
+
   await ExpenseClaim.update({
     Status: 'Deleted',
     UpdatedAt: new Date(),
-    UpdatedBy: data.updatedBy || data.createdBy || null
+    UpdatedBy: deletedBy
   }, { where: { ExpenseClaimId: id } });
+
+  if (deletedBy) {
+    await AuditLog.create({
+      UserId: deletedBy,
+      ExpenseClaimId: id,
+      Action: 'DELETE_CLAIM',
+      PreviousStatus: existing.Status,
+      NewStatus: 'Deleted',
+      Comments: 'Expense claim deleted',
+      CreatedAt: new Date(),
+      CreatedBy: deletedBy
+    });
+  }
 
   return { message: 'Expense claim deleted successfully' };
 }
 
-async function submitExpense(id, data) {
+async function submitExpense(id, data, actor) {
   const existing = await getExpenseById(id);
+
+  assertIsOwnerOrAdmin(existing, actor);
 
   if (existing.Status !== 'Draft' && existing.Status !== 'Sent Back') {
     throw createError(400, 'Only Draft or Sent Back claims can be submitted');
@@ -191,11 +289,13 @@ async function submitExpense(id, data) {
   const policyResult = await validatePolicies(existing.Items);
 
   const newStatus = 'Submitted';
+  const submittedDate = new Date();
 
   await ExpenseClaim.update({
     Status: newStatus,
-    SubmittedAt: new Date(),
-    UpdatedAt: new Date(),
+    ClaimDate: submittedDate,
+    SubmittedAt: submittedDate,
+    UpdatedAt: submittedDate,
     UpdatedBy: data.userId
   }, { where: { ExpenseClaimId: id } });
 
@@ -211,6 +311,9 @@ async function submitExpense(id, data) {
     CreatedAt: new Date(),
     CreatedBy: data.userId
   });
+
+  await notificationService.notifySubmitted(id);
+  await notificationService.notifyPendingApproval(id, 'Manager', existing.DepartmentId);
 
   return {
     message: 'Expense claim submitted successfully',
@@ -265,6 +368,74 @@ async function getReceipts(id) {
   });
 }
 
+async function getComments(id) {
+  return ExpenseClaimComment.findAll({
+    where: { ExpenseClaimId: id },
+    include: [{ model: User, as: 'User' }],
+    order: [['CreatedAt', 'ASC']]
+  });
+}
+
+async function addComment(id, data) {
+  const claim = await getExpenseById(id);
+
+  if (!data.userId) throw createError(400, 'userId is required');
+  if (!data.commentText || !data.commentText.trim()) throw createError(400, 'commentText is required');
+
+  await assertCanComment(claim, data.userId);
+
+  const commentText = data.commentText.trim();
+
+  await ExpenseClaimComment.create({
+    ExpenseClaimId: id,
+    UserId: data.userId,
+    CommentText: commentText,
+    CreatedAt: new Date()
+  });
+
+  await AuditLog.create({
+    UserId: data.userId,
+    ExpenseClaimId: id,
+    Action: 'ADD_COMMENT',
+    PreviousStatus: claim.Status,
+    NewStatus: claim.Status,
+    Comments: commentText,
+    CreatedAt: new Date(),
+    CreatedBy: data.userId
+  });
+
+  return getComments(id);
+}
+
+function assertIsOwnerOrAdmin(claim, actor) {
+  if (!actor) {
+    // No authenticated actor was supplied (e.g. an internal/service call) -- nothing to check.
+    return;
+  }
+
+  if (claim.EmployeeId === actor.userId || actor.role === 'Admin') {
+    return;
+  }
+
+  throw createError(403, 'You can only act on your own expense claims');
+}
+
+async function assertCanComment(claim, userId) {
+  const user = await User.findByPk(userId);
+  if (!user) throw createError(404, 'User not found');
+
+  if (user.Role === 'Admin') return;
+  if (claim.EmployeeId === user.UserId) return;
+  if (COMMENT_ROLE_STATUS_MAP[user.Role] === claim.Status) return;
+
+  const priorAction = await ApprovalHistory.findOne({
+    where: { ExpenseClaimId: claim.ExpenseClaimId, ApproverId: user.UserId }
+  });
+  if (priorAction) return;
+
+  throw createError(403, 'You do not have permission to comment on this claim');
+}
+
 async function recalculateClaimTotal(expenseClaimId, transaction) {
   const total = await ExpenseItem.sum('Amount', {
     where: { ExpenseClaimId: expenseClaimId },
@@ -277,9 +448,22 @@ async function recalculateClaimTotal(expenseClaimId, transaction) {
   );
 }
 
+async function assertCanCreateClaim(employeeId) {
+  const employee = await User.findByPk(employeeId);
+
+  if (!employee) {
+    throw createError(400, 'employeeId does not match an existing user');
+  }
+
+  if (employee.Role === 'Finance') {
+    throw createError(403, 'Finance users cannot create expense claims - they can only review claims pending their approval');
+  }
+}
+
 function validateCreateExpense(data) {
   if (!data.employeeId) throw createError(400, 'employeeId is required');
   if (!data.departmentId) throw createError(400, 'departmentId is required');
+  if (!data.projectId) throw createError(400, 'projectId is required');
   if (!data.businessPurpose) throw createError(400, 'businessPurpose is required');
   if (!data.createdBy) throw createError(400, 'createdBy is required');
 
@@ -310,5 +494,7 @@ module.exports = {
   deleteExpense,
   submitExpense,
   getExpenseHistory,
-  getReceipts
+  getReceipts,
+  getComments,
+  addComment
 };

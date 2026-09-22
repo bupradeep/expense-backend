@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 
+const { authenticate } = require('./middleware/authMiddleware');
+
 const expenseController = require('./controller/expenseController');
 const approvalController = require('./controller/approvalController');
 const reimbursementController = require('./controller/reimbursementController');
@@ -27,6 +29,9 @@ app.get('/health', (req, res) => {
     message: 'Expense Reimbursement API is running'
   });
 });
+
+// Every route below requires a valid Azure AD bearer token.
+app.use(authenticate);
 
 // Expense APIs
 app.use('/expenses', expenseController);
@@ -66,6 +71,22 @@ app.use((req, res) => {
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err);
+
+  if (err.name === 'SequelizeUniqueConstraintError' || err.name === 'SequelizeValidationError') {
+    const detail = (err.errors && err.errors.length)
+      ? err.errors.map((e) => e.message).join('; ')
+      : err.message;
+
+    return res.status(err.name === 'SequelizeUniqueConstraintError' ? 409 : 400).json({
+      message: detail
+    });
+  }
+
+  if (err.name === 'SequelizeForeignKeyConstraintError') {
+    return res.status(400).json({
+      message: `Invalid reference: ${err.fields ? err.fields.join(', ') : err.message}`
+    });
+  }
 
   res.status(err.status || 500).json({
     message: err.message || 'Internal server error'

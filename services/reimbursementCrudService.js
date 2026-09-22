@@ -1,4 +1,5 @@
-const { Reimbursement } = require('../models');
+const { Op } = require('sequelize');
+const { Reimbursement, ExpenseClaim } = require('../models');
 const { getPagination, toPagedResult } = require('../utils/pagination');
 
 async function createReimbursement(data) {
@@ -26,17 +27,32 @@ async function getReimbursements(filters = {}) {
   const where = {};
   if (filters.expenseClaimId) where.ExpenseClaimId = filters.expenseClaimId;
 
+  if (filters.fromDate || filters.toDate) {
+    where.PaymentDate = {};
+    if (filters.fromDate) where.PaymentDate[Op.gte] = filters.fromDate;
+    if (filters.toDate) where.PaymentDate[Op.lte] = filters.toDate;
+  }
+
+  const claimWhere = {};
+  if (filters.claimNumber) claimWhere.ClaimNumber = { [Op.like]: `%${filters.claimNumber}%` };
+
+  const include = [
+    { model: ExpenseClaim, attributes: ['ClaimNumber'], where: claimWhere }
+  ];
+
   const pagination = getPagination(filters);
 
   if (!pagination) {
-    return Reimbursement.findAll({ where, order: [['ReimbursementId', 'ASC']] });
+    return Reimbursement.findAll({ where, include, order: [['ReimbursementId', 'ASC']] });
   }
 
   const { count, rows } = await Reimbursement.findAndCountAll({
     where,
+    include,
     order: [['ReimbursementId', 'ASC']],
     limit: pagination.limit,
-    offset: pagination.offset
+    offset: pagination.offset,
+    distinct: true
   });
 
   return toPagedResult(pagination.page, pagination.pageSize, count, rows);

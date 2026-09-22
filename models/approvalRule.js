@@ -23,12 +23,24 @@ const ApprovalRule = sequelize.define('ApprovalRule', {
     type: DataTypes.STRING(50),
     allowNull: false
   },
-  SequenceNo: {
-    type: DataTypes.INTEGER,
-    allowNull: false
-  },
   IsActive: {
     type: DataTypes.BOOLEAN,
+    allowNull: true
+  },
+  CreatedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  UpdatedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  CreatedBy: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  UpdatedBy: {
+    type: DataTypes.INTEGER,
     allowNull: true
   }
 }, {

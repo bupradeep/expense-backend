@@ -260,7 +260,6 @@ Content-Type: application/json
 ```json
 {
   "approverId": 2,
-  "approvalLevel": 1,
   "comments": "Approved"
 }
 ```
@@ -275,7 +274,6 @@ Content-Type: application/json
 ```json
 {
   "approverId": 2,
-  "approvalLevel": 1,
   "comments": "Receipt is missing"
 }
 ```
@@ -290,7 +288,6 @@ Content-Type: application/json
 ```json
 {
   "approverId": 2,
-  "approvalLevel": 1,
   "comments": "Please provide the invoice"
 }
 ```

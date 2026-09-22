@@ -11,6 +11,7 @@ const ExpenseReceipt = require('./expenseReceipt');
 const ApprovalHistory = require('./approvalHistory');
 const AuditLog = require('./auditLog');
 const Reimbursement = require('./reimbursement');
+const ExpenseClaimComment = require('./expenseClaimComment');
 
 User.belongsTo(Department, { foreignKey: 'DepartmentId' });
 Department.hasMany(User, { foreignKey: 'DepartmentId' });
@@ -23,6 +24,7 @@ ExpenseClaim.hasMany(ExpenseReceipt, { foreignKey: 'ExpenseClaimId', as: 'Receip
 ExpenseClaim.hasMany(ApprovalHistory, { foreignKey: 'ExpenseClaimId' });
 ExpenseClaim.hasMany(AuditLog, { foreignKey: 'ExpenseClaimId' });
 ExpenseClaim.hasOne(Reimbursement, { foreignKey: 'ExpenseClaimId' });
+ExpenseClaim.hasMany(ExpenseClaimComment, { foreignKey: 'ExpenseClaimId', as: 'Comments' });
 
 ExpenseItem.belongsTo(ExpenseClaim, { foreignKey: 'ExpenseClaimId' });
 ExpenseItem.belongsTo(ExpenseCategory, { foreignKey: 'CategoryId' });
@@ -41,6 +43,9 @@ AuditLog.belongsTo(User, { foreignKey: 'UserId' });
 
 Reimbursement.belongsTo(ExpenseClaim, { foreignKey: 'ExpenseClaimId' });
 
+ExpenseClaimComment.belongsTo(ExpenseClaim, { foreignKey: 'ExpenseClaimId' });
+ExpenseClaimComment.belongsTo(User, { foreignKey: 'UserId', as: 'User' });
+
 module.exports = {
   sequelize,
   User,
@@ -54,5 +59,6 @@ module.exports = {
   ExpenseReceipt,
   ApprovalHistory,
   AuditLog,
-  Reimbursement
+  Reimbursement,
+  ExpenseClaimComment
 };
