@@ -14,7 +14,7 @@ router.post('/', async (req, res, next) => {
 
 router.get('/', async (req, res, next) => {
   try {
-    const result = await departmentService.getDepartments();
+    const result = await departmentService.getDepartments(req.query);
     res.json(result);
   } catch (error) {
     next(error);

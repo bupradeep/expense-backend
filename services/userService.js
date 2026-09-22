@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
 const { User, Department } = require('../models');
+const { getPagination, toPagedResult } = require('../utils/pagination');
 
 const ROLES = ['Employee', 'Admin', 'Manager', 'Finance', 'FinanceHead', 'DepartmentHead'];
 const DEFAULT_ROLE = 'Employee';
@@ -29,8 +30,22 @@ async function createUser(data) {
   return getUserById(user.UserId);
 }
 
-async function getUsers() {
-  return User.findAll({ include: [{ model: Department }], order: [['UserId', 'ASC']] });
+async function getUsers(query = {}) {
+  const pagination = getPagination(query);
+
+  if (!pagination) {
+    return User.findAll({ include: [{ model: Department }], order: [['UserId', 'ASC']] });
+  }
+
+  const { count, rows } = await User.findAndCountAll({
+    include: [{ model: Department }],
+    order: [['UserId', 'ASC']],
+    limit: pagination.limit,
+    offset: pagination.offset,
+    distinct: true
+  });
+
+  return toPagedResult(pagination.page, pagination.pageSize, count, rows);
 }
 
 async function getUserById(id) {

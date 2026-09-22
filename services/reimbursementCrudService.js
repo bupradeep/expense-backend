@@ -1,4 +1,5 @@
 const { Reimbursement } = require('../models');
+const { getPagination, toPagedResult } = require('../utils/pagination');
 
 async function createReimbursement(data) {
   if (!data.expenseClaimId) throw createError(400, 'expenseClaimId is required');
@@ -25,7 +26,20 @@ async function getReimbursements(filters = {}) {
   const where = {};
   if (filters.expenseClaimId) where.ExpenseClaimId = filters.expenseClaimId;
 
-  return Reimbursement.findAll({ where, order: [['ReimbursementId', 'ASC']] });
+  const pagination = getPagination(filters);
+
+  if (!pagination) {
+    return Reimbursement.findAll({ where, order: [['ReimbursementId', 'ASC']] });
+  }
+
+  const { count, rows } = await Reimbursement.findAndCountAll({
+    where,
+    order: [['ReimbursementId', 'ASC']],
+    limit: pagination.limit,
+    offset: pagination.offset
+  });
+
+  return toPagedResult(pagination.page, pagination.pageSize, count, rows);
 }
 
 async function getReimbursementById(id) {

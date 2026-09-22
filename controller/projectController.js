@@ -14,7 +14,7 @@ router.post('/', async (req, res, next) => {
 
 router.get('/', async (req, res, next) => {
   try {
-    const result = await projectService.getProjects();
+    const result = await projectService.getProjects(req.query);
     res.json(result);
   } catch (error) {
     next(error);

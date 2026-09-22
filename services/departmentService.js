@@ -1,4 +1,5 @@
 const { Department } = require('../models');
+const { getPagination, toPagedResult } = require('../utils/pagination');
 
 async function createDepartment(data) {
   if (!data.departmentName) throw createError(400, 'departmentName is required');
@@ -9,8 +10,20 @@ async function createDepartment(data) {
   });
 }
 
-async function getDepartments() {
-  return Department.findAll({ order: [['DepartmentId', 'ASC']] });
+async function getDepartments(query = {}) {
+  const pagination = getPagination(query);
+
+  if (!pagination) {
+    return Department.findAll({ order: [['DepartmentId', 'ASC']] });
+  }
+
+  const { count, rows } = await Department.findAndCountAll({
+    order: [['DepartmentId', 'ASC']],
+    limit: pagination.limit,
+    offset: pagination.offset
+  });
+
+  return toPagedResult(pagination.page, pagination.pageSize, count, rows);
 }
 
 async function getDepartmentById(id) {

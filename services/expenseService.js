@@ -11,6 +11,7 @@ const {
   Project,
   ExpenseCategory
 } = require('../models');
+const { getPagination, toPagedResult } = require('../utils/pagination');
 
 async function createExpense(data) {
   validateCreateExpense(data);
@@ -72,15 +73,28 @@ async function getExpenses(filters) {
   if (filters.status) where.Status = filters.status;
   if (filters.departmentId) where.DepartmentId = filters.departmentId;
 
-  return ExpenseClaim.findAll({
+  const include = [
+    { model: User, as: 'Employee' },
+    { model: Department },
+    { model: Project, required: false }
+  ];
+
+  const pagination = getPagination(filters);
+
+  if (!pagination) {
+    return ExpenseClaim.findAll({ where, include, order: [['CreatedAt', 'DESC']] });
+  }
+
+  const { count, rows } = await ExpenseClaim.findAndCountAll({
     where,
-    include: [
-      { model: User, as: 'Employee' },
-      { model: Department },
-      { model: Project, required: false }
-    ],
-    order: [['CreatedAt', 'DESC']]
+    include,
+    order: [['CreatedAt', 'DESC']],
+    limit: pagination.limit,
+    offset: pagination.offset,
+    distinct: true
   });
+
+  return toPagedResult(pagination.page, pagination.pageSize, count, rows);
 }
 
 async function getExpenseById(id) {

@@ -7,12 +7,13 @@ const {
   User,
   Department
 } = require('../models');
+const { getPagination, toPagedResult } = require('../utils/pagination');
 
-const STATUS_ROLE_MAP = {
-  Submitted: 'Manager',
-  'Department Head Review': 'DepartmentHead',
-  'Finance Review': 'Finance',
-  'Finance Head Review': 'FinanceHead'
+const ROLE_STATUS_MAP = {
+  Manager: 'Submitted',
+  DepartmentHead: 'Department Head Review',
+  Finance: 'Finance Review',
+  FinanceHead: 'Finance Head Review'
 };
 
 async function getApprovalHistory(filters = {}) {
@@ -35,38 +36,18 @@ async function getApprovalHistory(filters = {}) {
   });
 }
 
-async function getPendingApprovals(filters) {
-  const statuses = [
-    'Submitted',
-    'Manager Approved',
-    'Department Head Review',
-    'Finance Review',
-    'Finance Head Review'
-  ];
+const ALL_PENDING_STATUSES = [
+  'Submitted',
+  'Manager Approved',
+  'Department Head Review',
+  'Finance Review',
+  'Finance Head Review'
+];
 
-  let approverRole = null;
-
-  if (filters.userId) {
-    const approver = await User.findByPk(filters.userId);
-    approverRole = approver ? approver.Role : null;
-  }
-
-  const claims = await ExpenseClaim.findAll({
-    where: { Status: { [Op.in]: statuses } },
-    include: [
-      { model: User, as: 'Employee', attributes: ['UserId', 'FullName'] },
-      { model: Department, attributes: ['DepartmentId', 'DepartmentName'] }
-    ],
-    order: [['SubmittedAt', 'ASC']]
-  });
-
-  const filtered = filters.userId
-    ? claims.filter((claim) => STATUS_ROLE_MAP[claim.Status] === approverRole)
-    : claims;
-
+async function enrichWithLastApproval(claims) {
   const result = [];
 
-  for (const claim of filtered) {
+  for (const claim of claims) {
     const lastApproval = await ApprovalHistory.findOne({
       where: { ExpenseClaimId: claim.ExpenseClaimId },
       order: [['ApprovalHistoryId', 'DESC']]
@@ -89,6 +70,50 @@ async function getPendingApprovals(filters) {
   }
 
   return result;
+}
+
+async function getPendingApprovals(filters) {
+  const pagination = getPagination(filters);
+
+  let statusWhere = { [Op.in]: ALL_PENDING_STATUSES };
+
+  if (filters.userId) {
+    const approver = await User.findByPk(filters.userId);
+    const requiredStatus = approver ? ROLE_STATUS_MAP[approver.Role] : undefined;
+
+    // No status maps to this role (e.g. Admin/Employee), so nothing is pending for them.
+    if (!requiredStatus) {
+      return pagination ? toPagedResult(pagination.page, pagination.pageSize, 0, []) : [];
+    }
+
+    statusWhere = requiredStatus;
+  }
+
+  const include = [
+    { model: User, as: 'Employee', attributes: ['UserId', 'FullName'] },
+    { model: Department, attributes: ['DepartmentId', 'DepartmentName'] }
+  ];
+
+  if (!pagination) {
+    const claims = await ExpenseClaim.findAll({
+      where: { Status: statusWhere },
+      include,
+      order: [['SubmittedAt', 'ASC']]
+    });
+    return enrichWithLastApproval(claims);
+  }
+
+  const { count, rows } = await ExpenseClaim.findAndCountAll({
+    where: { Status: statusWhere },
+    include,
+    order: [['SubmittedAt', 'ASC']],
+    limit: pagination.limit,
+    offset: pagination.offset,
+    distinct: true
+  });
+
+  const items = await enrichWithLastApproval(rows);
+  return toPagedResult(pagination.page, pagination.pageSize, count, items);
 }
 
 async function approveExpense(id, data) {

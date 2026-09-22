@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
 const { Project } = require('../models');
+const { getPagination, toPagedResult } = require('../utils/pagination');
 
 async function createProject(data) {
   if (!data.projectName) throw createError(400, 'projectName is required');
@@ -16,8 +17,20 @@ async function createProject(data) {
   });
 }
 
-async function getProjects() {
-  return Project.findAll({ order: [['ProjectId', 'ASC']] });
+async function getProjects(query = {}) {
+  const pagination = getPagination(query);
+
+  if (!pagination) {
+    return Project.findAll({ order: [['ProjectId', 'ASC']] });
+  }
+
+  const { count, rows } = await Project.findAndCountAll({
+    order: [['ProjectId', 'ASC']],
+    limit: pagination.limit,
+    offset: pagination.offset
+  });
+
+  return toPagedResult(pagination.page, pagination.pageSize, count, rows);
 }
 
 async function getProjectById(id) {
