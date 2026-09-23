@@ -46,7 +46,7 @@ router.put('/:id', async (req, res, next) => {
 
 router.delete('/:id', async (req, res, next) => {
   try {
-    const result = await expenseItemService.deleteExpenseItem(req.params.id);
+    const result = await expenseItemService.deleteExpenseItem(req.params.id, req.user.userId);
     res.json(result);
   } catch (error) {
     next(error);

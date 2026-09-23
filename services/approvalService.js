@@ -276,7 +276,7 @@ async function processApproval(id, data, action, options = {}) {
   });
 
   if (action === 'Approved') {
-    await notificationService.notifyApproved(id, data.comments);
+    await notificationService.notifyApproved(id, data.comments, nextStage ? nextStage.role : null);
 
     if (nextStage) {
       await notificationService.notifyPendingApproval(
@@ -297,10 +297,12 @@ async function processApproval(id, data, action, options = {}) {
   };
 }
 
-// Called right after submitExpense puts a claim into the Manager stage. Routes it to the
-// employee's specifically assigned manager (Users.ManagerId) if one is set; otherwise there's
-// no one who could ever act on this stage, so it auto-advances past it rather than leaving the
-// claim stuck forever, recording an ApprovalHistory entry that makes the auto-approval visible.
+// Called right after submitExpense puts a claim into its starting stage -- which, depending on
+// the ApprovalRule matched for its amount, may be Manager (the default) or may skip straight to
+// DepartmentHead or Finance. Notifies whoever can act at that stage; for the Manager stage
+// specifically, routes to the employee's assigned manager (Users.ManagerId) if one is set, or
+// auto-advances past it if not, since there'd be no one who could ever act on it otherwise --
+// recording an ApprovalHistory entry that makes the auto-approval visible.
 async function routeInitialApproval(claimId) {
   const claim = await ExpenseClaim.findByPk(claimId);
 
@@ -308,28 +310,37 @@ async function routeInitialApproval(claimId) {
 
   const stage = STAGE_BY_STATUS[claim.Status];
 
-  if (!stage || stage.scope !== 'personalManager') return;
+  if (!stage) return;
 
-  const employee = await User.findByPk(claim.EmployeeId);
+  if (stage.scope === 'personalManager') {
+    const employee = await User.findByPk(claim.EmployeeId);
 
-  if (employee && employee.ManagerId) {
-    await notificationService.notifyPendingApprovalForManager(claimId, employee.ManagerId);
+    if (employee && employee.ManagerId) {
+      await notificationService.notifyPendingApprovalForManager(claimId, employee.ManagerId);
+      return;
+    }
+
+    await processApproval(
+      claimId,
+      {
+        approverId: employee ? employee.UserId : claim.EmployeeId,
+        comments: 'Auto-approved: no manager is mapped for this employee.'
+      },
+      'Approved',
+      { system: true }
+    );
     return;
   }
 
-  await processApproval(
+  await notificationService.notifyPendingApproval(
     claimId,
-    {
-      approverId: employee ? employee.UserId : claim.EmployeeId,
-      comments: 'Auto-approved: no manager is mapped for this employee.'
-    },
-    'Approved',
-    { system: true }
+    stage.role,
+    stage.scope === 'department' ? claim.DepartmentId : null
   );
 }
 
-async function getNextStageRole(amount, currentLevel) {
-  const rule = await ApprovalRule.findOne({
+async function findApprovalRule(amount, level) {
+  return ApprovalRule.findOne({
     where: {
       IsActive: true,
       MinimumAmount: { [Op.lte]: amount },
@@ -337,12 +348,34 @@ async function getNextStageRole(amount, currentLevel) {
         { MaximumAmount: { [Op.gte]: amount } },
         { MaximumAmount: null }
       ],
-      ApprovalLevel: currentLevel + 1
+      ApprovalLevel: level
     },
     order: [['ApprovalRuleId', 'ASC']]
   });
+}
 
+async function getNextStageRole(amount, currentLevel) {
+  const rule = await findApprovalRule(amount, currentLevel + 1);
   return rule ? rule.ApproverRole : null;
+}
+
+// Determines which stage a newly-submitted claim actually starts at. A level-1 ApprovalRule lets
+// an amount band skip Manager entirely (e.g. small claims routed straight to Finance-only review);
+// with no matching level-1 rule, Manager remains the default starting stage.
+async function getStartingStage(amount) {
+  const rule = await findApprovalRule(amount, 1);
+
+  if (!rule) {
+    return APPROVAL_STAGES[0];
+  }
+
+  const stage = STAGE_BY_ROLE[rule.ApproverRole];
+
+  if (!stage) {
+    throw createError(500, `Approval rule configured with unknown role "${rule.ApproverRole}"`);
+  }
+
+  return stage;
 }
 
 function createError(status, message) {
@@ -357,5 +390,6 @@ module.exports = {
   approveExpense,
   rejectExpense,
   sendBackExpense,
-  routeInitialApproval
+  routeInitialApproval,
+  getStartingStage
 };

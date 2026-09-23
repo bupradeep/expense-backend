@@ -5,6 +5,11 @@ const { getPagination, toPagedResult } = require('../utils/pagination');
 const ROLES = ['Employee', 'Admin', 'Manager', 'Finance', 'DepartmentHead'];
 const DEFAULT_ROLE = 'Employee';
 
+const ROLE_FORCED_DEPARTMENT_NAME = {
+  Admin: 'Administration',
+  Finance: 'Finance'
+};
+
 async function createUser(data) {
   if (!data.fullName) throw createError(400, 'FullName is required');
   if (!data.email) throw createError(400, 'Email is required');
@@ -14,10 +19,11 @@ async function createUser(data) {
   const role = data.role || DEFAULT_ROLE;
 
   validateRole(role);
-  await validateDepartment(data.departmentId);
+  const departmentId = await resolveDepartmentId(role, data.departmentId);
+  await validateDepartment(departmentId);
   await validateManager(data.managerId);
   await assertNoDuplicate(data);
-  await assertSingleHead(role, data.departmentId);
+  await assertUniqueRole(role, departmentId);
 
   const user = await User.create({
     FullName: data.fullName,
@@ -25,7 +31,7 @@ async function createUser(data) {
     EmployeeCode: data.employeeCode,
     Role: role,
     EmployeeObjectId: data.employeeObjectId,
-    DepartmentId: data.departmentId || null,
+    DepartmentId: departmentId || null,
     ManagerId: data.managerId || null,
     IsActive: data.isActive ?? true,
     CreatedAt: new Date(),
@@ -87,14 +93,14 @@ async function updateUser(id, data) {
   if (!data.employeeObjectId) throw createError(400, 'Employee Object Id is required');
 
   const role = data.role || user.Role;
-  const departmentId = data.departmentId || user.DepartmentId;
   const managerId = data.managerId !== undefined ? data.managerId : user.ManagerId;
 
   validateRole(role);
+  const departmentId = await resolveDepartmentId(role, data.departmentId || user.DepartmentId);
   await validateDepartment(departmentId);
   await validateManager(managerId, id);
   await assertNoDuplicate(data, id);
-  await assertSingleHead(role, departmentId, id);
+  await assertUniqueRole(role, departmentId, id);
 
   await user.update({
     FullName: data.fullName,
@@ -142,7 +148,35 @@ async function validateManager(managerId, excludeUserId) {
   }
 }
 
-async function assertSingleHead(role, departmentId, excludeUserId) {
+async function resolveDepartmentId(role, departmentId) {
+  const forcedDepartmentName = ROLE_FORCED_DEPARTMENT_NAME[role];
+
+  if (!forcedDepartmentName) return departmentId;
+
+  const [department] = await Department.findOrCreate({
+    where: { DepartmentName: forcedDepartmentName },
+    defaults: { DepartmentName: forcedDepartmentName, IsActive: true, CreatedAt: new Date() }
+  });
+
+  return department.DepartmentId;
+}
+
+const SINGLE_INSTANCE_ROLES = ['Admin', 'Finance'];
+
+async function assertUniqueRole(role, departmentId, excludeUserId) {
+  if (SINGLE_INSTANCE_ROLES.includes(role)) {
+    const where = { Role: role, IsActive: true };
+    if (excludeUserId) where.UserId = { [Op.ne]: excludeUserId };
+
+    const existing = await User.findOne({ where });
+
+    if (existing) {
+      throw createError(409, `A ${role} user already exists. Only one ${role} is allowed across the organization`);
+    }
+
+    return;
+  }
+
   if (role !== 'DepartmentHead') return;
 
   if (!departmentId) {

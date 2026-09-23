@@ -61,7 +61,7 @@ async function createExpense(data) {
       }, { transaction });
     }
 
-    await recalculateClaimTotal(claim.ExpenseClaimId, transaction);
+    await recalculateClaimTotal(claim.ExpenseClaimId, data.createdBy, transaction);
 
     await AuditLog.create({
       UserId: data.createdBy,
@@ -224,7 +224,7 @@ async function updateExpense(id, data, actor) {
       });
     }
 
-    await recalculateClaimTotal(id);
+    await recalculateClaimTotal(id, data.updatedBy);
   }
 
   await AuditLog.create({
@@ -289,7 +289,11 @@ async function submitExpense(id, data, actor) {
 
   const policyResult = await validatePolicies(existing.Items);
 
-  const newStatus = 'Submitted';
+  // The starting stage is driven by the amount-banded ApprovalRule (level 1) -- e.g. a small
+  // claim can route straight to Finance and skip Manager entirely. With no matching rule,
+  // Manager remains the default starting stage.
+  const startingStage = await approvalService.getStartingStage(existing.TotalAmount);
+  const newStatus = startingStage.status;
   const submittedDate = new Date();
 
   await ExpenseClaim.update({
@@ -439,14 +443,14 @@ async function assertCanComment(claim, userId) {
   throw createError(403, 'You do not have permission to comment on this claim');
 }
 
-async function recalculateClaimTotal(expenseClaimId, transaction) {
+async function recalculateClaimTotal(expenseClaimId, updatedBy, transaction) {
   const total = await ExpenseItem.sum('Amount', {
     where: { ExpenseClaimId: expenseClaimId },
     transaction
   });
 
   await ExpenseClaim.update(
-    { TotalAmount: total || 0, UpdatedAt: new Date() },
+    { TotalAmount: total || 0, UpdatedAt: new Date(), UpdatedBy: updatedBy || null },
     { where: { ExpenseClaimId: expenseClaimId }, transaction }
   );
 }

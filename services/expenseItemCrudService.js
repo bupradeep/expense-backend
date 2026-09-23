@@ -19,7 +19,7 @@ async function createExpenseItem(data) {
     CreatedBy: data.createdBy
   });
 
-  await recalculateClaimTotal(data.expenseClaimId);
+  await recalculateClaimTotal(data.expenseClaimId, data.createdBy);
 
   return getExpenseItemById(item.ExpenseItemId);
 }
@@ -59,27 +59,27 @@ async function updateExpenseItem(id, data) {
     UpdatedBy: data.updatedBy || null
   });
 
-  await recalculateClaimTotal(item.ExpenseClaimId);
+  await recalculateClaimTotal(item.ExpenseClaimId, data.updatedBy);
 
   return getExpenseItemById(id);
 }
 
-async function deleteExpenseItem(id) {
+async function deleteExpenseItem(id, deletedBy) {
   const item = await getExpenseItemById(id);
   const expenseClaimId = item.ExpenseClaimId;
 
   await item.destroy();
 
-  await recalculateClaimTotal(expenseClaimId);
+  await recalculateClaimTotal(expenseClaimId, deletedBy);
 
   return { message: 'Expense item deleted successfully' };
 }
 
-async function recalculateClaimTotal(expenseClaimId) {
+async function recalculateClaimTotal(expenseClaimId, updatedBy) {
   const total = await ExpenseItem.sum('Amount', { where: { ExpenseClaimId: expenseClaimId } });
 
   await ExpenseClaim.update(
-    { TotalAmount: total || 0, UpdatedAt: new Date() },
+    { TotalAmount: total || 0, UpdatedAt: new Date(), UpdatedBy: updatedBy || null },
     { where: { ExpenseClaimId: expenseClaimId } }
   );
 }

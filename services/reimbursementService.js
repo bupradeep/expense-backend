@@ -22,11 +22,13 @@ async function processPayment(id, data) {
     throw createError(400, 'Reimbursement already exists for this claim');
   }
 
+  const paymentAmount = data.paymentAmount || claim.TotalAmount;
+
   await Reimbursement.create({
     ExpenseClaimId: id,
     PaymentReference: data.paymentReference || null,
     PaymentDate: data.paymentDate || new Date(),
-    PaymentAmount: data.paymentAmount || claim.TotalAmount,
+    PaymentAmount: paymentAmount,
     PaymentMethod: data.paymentMethod || 'Bank Transfer',
     TransactionReference: data.transactionReference || null,
     PaymentRemarks: data.paymentRemarks || null,
@@ -53,7 +55,7 @@ async function processPayment(id, data) {
     CreatedBy: data.processedBy
   });
 
-  await notificationService.notifyReimbursed(id, data.paymentAmount || claim.TotalAmount);
+  await notificationService.notifyReimbursed(id, paymentAmount);
 
   return {
     message: 'Reimbursement processed successfully',

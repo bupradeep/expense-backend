@@ -19,15 +19,19 @@ async function notifySubmitted(expenseClaimId) {
   });
 }
 
-async function notifyApproved(expenseClaimId, comments) {
+async function notifyApproved(expenseClaimId, comments, nextStageRole) {
   const claim = await getClaimWithEmployee(expenseClaimId);
   if (!claim) return;
+
+  const progressMessage = nextStageRole
+    ? `Your expense claim <b>${claim.ClaimNumber}</b> has been approved and is now awaiting review by ${nextStageRole}.`
+    : `Your expense claim <b>${claim.ClaimNumber}</b> has been fully approved.`;
 
   await sendMail({
     to: claim.Employee.Email,
     subject: `Expense Claim ${claim.ClaimNumber} Approved`,
     html: `<p>Hi ${claim.Employee.FullName},</p>
-      <p>Your expense claim <b>${claim.ClaimNumber}</b> has been approved.</p>
+      <p>${progressMessage}</p>
       ${comments ? `<p>Comments: ${comments}</p>` : ''}`
   });
 }
