@@ -16,6 +16,9 @@ const ExpenseClaimComment = require('./expenseClaimComment');
 User.belongsTo(Department, { foreignKey: 'DepartmentId' });
 Department.hasMany(User, { foreignKey: 'DepartmentId' });
 
+User.belongsTo(User, { foreignKey: 'ManagerId', as: 'Manager' });
+User.hasMany(User, { foreignKey: 'ManagerId', as: 'DirectReports' });
+
 ExpenseClaim.belongsTo(User, { foreignKey: 'EmployeeId', as: 'Employee' });
 ExpenseClaim.belongsTo(Department, { foreignKey: 'DepartmentId' });
 ExpenseClaim.belongsTo(Project, { foreignKey: 'ProjectId' });

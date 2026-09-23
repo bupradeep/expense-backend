@@ -5,8 +5,13 @@ const jwksRsa = require('jwks-rsa');
 const tenantId = process.env.AZURE_TENANT_ID;
 const clientId = process.env.AZURE_CLIENT_ID;
 
-// Entra ID issues v2.0 tokens with this issuer shape for a given tenant.
-const expectedIssuer = tenantId ? `https://login.microsoftonline.com/${tenantId}/v2.0` : null;
+// SPFx's built-in aadTokenProviderFactory acquires tokens via SharePoint's AAD v1 token broker
+// (resource-based, not MSAL v2 scope-based), so tokens arrive in v1.0 format with issuer
+// "https://sts.windows.net/{tenantId}/" rather than the v2.0 "https://login.microsoftonline.com/.../v2.0"
+// shape. Accept both so this works regardless of which token version a caller presents.
+const expectedIssuer = tenantId
+  ? [`https://login.microsoftonline.com/${tenantId}/v2.0`, `https://sts.windows.net/${tenantId}/`]
+  : null;
 
 
 const client = tenantId
@@ -94,7 +99,7 @@ async function authenticate(req, res, next) {
   try {
     user = await getUserByEmployeeObjectId(objectId);
   } catch (error) {
-    return res.status(403).json({ message: 'No local account is provisioned for this identity' });
+    return res.status(403).json({ message: 'No user is provisioned for this identity' });
   }
 
   if (!user.IsActive) {

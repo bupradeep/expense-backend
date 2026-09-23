@@ -5,6 +5,8 @@ const expenseItemService = require('../services/expenseItemCrudService');
 
 router.post('/', async (req, res, next) => {
   try {
+    req.body.createdBy = req.user.userId;
+
     const result = await expenseItemService.createExpenseItem(req.body);
     res.status(201).json(result);
   } catch (error) {
@@ -33,6 +35,8 @@ router.get('/:id', async (req, res, next) => {
 
 router.put('/:id', async (req, res, next) => {
   try {
+    req.body.updatedBy = req.user.userId;
+
     const result = await expenseItemService.updateExpenseItem(req.params.id, req.body);
     res.json(result);
   } catch (error) {

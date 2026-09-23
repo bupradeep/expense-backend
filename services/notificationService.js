@@ -75,6 +75,21 @@ async function notifyPendingApproval(expenseClaimId, role, departmentId) {
   await Promise.all(approvers.map((user) => sendMail({ to: user.Email, subject, html })));
 }
 
+async function notifyPendingApprovalForManager(expenseClaimId, managerUserId) {
+  const claim = await getClaimWithEmployee(expenseClaimId);
+  if (!claim) return;
+
+  const manager = await User.findByPk(managerUserId);
+  if (!manager) return;
+
+  await sendMail({
+    to: manager.Email,
+    subject: `Expense Claim ${claim.ClaimNumber} Awaiting Your Approval`,
+    html: `<p>Hi ${manager.FullName},</p>
+      <p>Expense claim <b>${claim.ClaimNumber}</b> from ${claim.Employee.FullName} for amount ${claim.TotalAmount} is awaiting your approval as their manager.</p>`
+  });
+}
+
 async function notifyReimbursed(expenseClaimId, paymentAmount) {
   const claim = await getClaimWithEmployee(expenseClaimId);
   if (!claim) return;
@@ -93,5 +108,6 @@ module.exports = {
   notifyRejected,
   notifySentBack,
   notifyPendingApproval,
+  notifyPendingApprovalForManager,
   notifyReimbursed
 };

@@ -15,6 +15,7 @@ async function createUser(data) {
 
   validateRole(role);
   await validateDepartment(data.departmentId);
+  await validateManager(data.managerId);
   await assertNoDuplicate(data);
   await assertSingleHead(role, data.departmentId);
 
@@ -25,6 +26,7 @@ async function createUser(data) {
     Role: role,
     EmployeeObjectId: data.employeeObjectId,
     DepartmentId: data.departmentId || null,
+    ManagerId: data.managerId || null,
     IsActive: data.isActive ?? true,
     CreatedAt: new Date(),
     CreatedBy: data.createdBy || null
@@ -33,15 +35,17 @@ async function createUser(data) {
   return getUserById(user.UserId);
 }
 
+const MANAGER_INCLUDE = { model: User, as: 'Manager', attributes: ['UserId', 'FullName', 'Email'] };
+
 async function getUsers(query = {}) {
   const pagination = getPagination(query);
 
   if (!pagination) {
-    return User.findAll({ include: [{ model: Department }], order: [['UserId', 'ASC']] });
+    return User.findAll({ include: [{ model: Department }, MANAGER_INCLUDE], order: [['UserId', 'ASC']] });
   }
 
   const { count, rows } = await User.findAndCountAll({
-    include: [{ model: Department }],
+    include: [{ model: Department }, MANAGER_INCLUDE],
     order: [['UserId', 'ASC']],
     limit: pagination.limit,
     offset: pagination.offset,
@@ -52,7 +56,7 @@ async function getUsers(query = {}) {
 }
 
 async function getUserById(id) {
-  const user = await User.findByPk(id, { include: [{ model: Department }] });
+  const user = await User.findByPk(id, { include: [{ model: Department }, MANAGER_INCLUDE] });
 
   if (!user) {
     throw createError(404, 'User not found');
@@ -64,7 +68,7 @@ async function getUserById(id) {
 async function getUserByEmployeeObjectId(employeeObjectId) {
   const user = await User.findOne({
     where: { EmployeeObjectId: employeeObjectId },
-    include: [{ model: Department }]
+    include: [{ model: Department }, MANAGER_INCLUDE]
   });
 
   if (!user) {
@@ -84,9 +88,11 @@ async function updateUser(id, data) {
 
   const role = data.role || user.Role;
   const departmentId = data.departmentId || user.DepartmentId;
+  const managerId = data.managerId !== undefined ? data.managerId : user.ManagerId;
 
   validateRole(role);
   await validateDepartment(departmentId);
+  await validateManager(managerId, id);
   await assertNoDuplicate(data, id);
   await assertSingleHead(role, departmentId, id);
 
@@ -97,6 +103,7 @@ async function updateUser(id, data) {
     Role: role,
     EmployeeObjectId: data.employeeObjectId,
     DepartmentId: departmentId || null,
+    ManagerId: managerId || null,
     IsActive: data.isActive ?? user.IsActive,
     UpdatedAt: new Date(),
     UpdatedBy: data.updatedBy || null
@@ -121,8 +128,22 @@ async function validateDepartment(departmentId) {
   }
 }
 
+async function validateManager(managerId, excludeUserId) {
+  if (!managerId) return;
+
+  if (excludeUserId && Number(managerId) === Number(excludeUserId)) {
+    throw createError(400, 'A user cannot be their own manager');
+  }
+
+  const manager = await User.findByPk(managerId);
+
+  if (!manager) {
+    throw createError(400, 'managerId does not match an existing user');
+  }
+}
+
 async function assertSingleHead(role, departmentId, excludeUserId) {
-  if (role !== 'DepartmentHead' && role !== 'Manager') return;
+  if (role !== 'DepartmentHead') return;
 
   if (!departmentId) {
     throw createError(400, `departmentId is required for the ${role} role`);

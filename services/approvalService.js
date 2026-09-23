@@ -14,10 +14,16 @@ const notificationService = require('./notificationService');
 // required and is entered directly by submitExpense. Levels 2+ only apply if
 // an active ApprovalRule exists for the claim's amount at that level, letting
 // smaller claims skip straight to 'Approved' after the Manager signs off.
+//
+// scope controls who may act at a stage:
+// - 'personalManager': only the specific person recorded as the claim's employee's
+//   ManagerId (Users.ManagerId) -- not just anyone with the Manager role.
+// - 'department': anyone with the stage's role in the claim's own department.
+// - 'none': anyone with the stage's role, tenant-wide.
 const APPROVAL_STAGES = [
-  { level: 1, role: 'Manager', status: 'Submitted', departmentScoped: true },
-  { level: 2, role: 'DepartmentHead', status: 'Department Head Review', departmentScoped: true },
-  { level: 3, role: 'Finance', status: 'Finance Review', departmentScoped: false }
+  { level: 1, role: 'Manager', status: 'Submitted', scope: 'personalManager' },
+  { level: 2, role: 'DepartmentHead', status: 'Department Head Review', scope: 'department' },
+  { level: 3, role: 'Finance', status: 'Finance Review', scope: 'none' }
 ];
 
 const STAGE_BY_ROLE = Object.fromEntries(APPROVAL_STAGES.map((stage) => [stage.role, stage]));
@@ -95,24 +101,35 @@ async function getPendingApprovals(filters) {
   const pagination = getPagination(filters);
 
   let where = { Status: { [Op.in]: PENDING_STATUSES } };
+  const employeeInclude = { model: User, as: 'Employee', attributes: ['UserId', 'FullName'] };
 
   if (filters.userId) {
     const approver = await User.findByPk(filters.userId);
-    const stage = approver ? STAGE_BY_ROLE[approver.Role] : undefined;
 
-    // No stage maps to this role (e.g. Admin/Employee), so nothing is pending for them.
-    if (!stage) {
-      return pagination ? toPagedResult(pagination.page, pagination.pageSize, 0, []) : [];
-    }
+    // Admin sees everything pending, unscoped -- same as passing no userId at all.
+    if (!approver || approver.Role !== 'Admin') {
+      const stage = approver ? STAGE_BY_ROLE[approver.Role] : undefined;
 
-    where = { Status: stage.status };
-    if (stage.departmentScoped) {
-      where.DepartmentId = approver.DepartmentId;
+      // No stage maps to this role (e.g. Employee), so nothing is pending for them.
+      if (!stage) {
+        return pagination ? toPagedResult(pagination.page, pagination.pageSize, 0, []) : [];
+      }
+
+      where = { Status: stage.status };
+
+      if (stage.scope === 'department') {
+        where.DepartmentId = approver.DepartmentId;
+      } else if (stage.scope === 'personalManager') {
+        // Only claims whose employee has this approver as their specifically assigned
+        // manager -- not just any Manager in the same department.
+        employeeInclude.where = { ManagerId: approver.UserId };
+        employeeInclude.required = true;
+      }
     }
   }
 
   const include = [
-    { model: User, as: 'Employee', attributes: ['UserId', 'FullName'] },
+    employeeInclude,
     { model: Department, attributes: ['DepartmentId', 'DepartmentName'] }
   ];
 
@@ -158,7 +175,7 @@ async function sendBackExpense(id, data) {
   return processApproval(id, data, 'Sent Back');
 }
 
-async function processApproval(id, data, action) {
+async function processApproval(id, data, action, options = {}) {
   if (!data.approverId) {
     throw createError(400, 'approverId is required');
   }
@@ -175,8 +192,8 @@ async function processApproval(id, data, action) {
     throw createError(400, 'approverId does not match an existing user');
   }
 
-  // The stage (level, required role, department scoping) is derived entirely from the
-  // claim's own status/amount/department - never trusted from client input - so the
+  // The stage (level, required role, department/manager scoping) is derived entirely from
+  // the claim's own status/amount/department - never trusted from client input - so the
   // approval level and sequence are resolved automatically rather than passed in.
   const stage = STAGE_BY_STATUS[claim.Status];
 
@@ -184,12 +201,29 @@ async function processApproval(id, data, action) {
     throw createError(400, `Claim is not currently awaiting approval (status: ${claim.Status})`);
   }
 
-  if (approver.Role !== stage.role) {
-    throw createError(403, `Only a ${stage.role} can act on this claim at its current stage`);
-  }
+  // options.system marks an automatic, non-user-initiated transition (e.g. auto-approving
+  // a Manager stage when the employee has no manager mapped) -- it bypasses the role/scope
+  // checks below since there's no real approver acting.
+  //
+  // Otherwise: Admin can act on any claim at any stage; everyone else must match the
+  // stage's required role and, where scoped, be the right department or the employee's
+  // specifically assigned manager.
+  if (!options.system && approver.Role !== 'Admin') {
+    if (approver.Role !== stage.role) {
+      throw createError(403, `Only a ${stage.role} can act on this claim at its current stage`);
+    }
 
-  if (stage.departmentScoped && approver.DepartmentId !== claim.DepartmentId) {
-    throw createError(403, 'You can only act on claims for your own department');
+    if (stage.scope === 'department' && approver.DepartmentId !== claim.DepartmentId) {
+      throw createError(403, 'You can only act on claims for your own department');
+    }
+
+    if (stage.scope === 'personalManager') {
+      const employee = await User.findByPk(claim.EmployeeId);
+
+      if (!employee || employee.ManagerId !== approver.UserId) {
+        throw createError(403, 'Only the employee\'s assigned manager can act on this claim');
+      }
+    }
   }
 
   const approvalLevel = stage.level;
@@ -248,7 +282,7 @@ async function processApproval(id, data, action) {
       await notificationService.notifyPendingApproval(
         id,
         nextStage.role,
-        nextStage.departmentScoped ? claim.DepartmentId : null
+        nextStage.scope === 'department' ? claim.DepartmentId : null
       );
     }
   } else if (action === 'Rejected') {
@@ -261,6 +295,37 @@ async function processApproval(id, data, action) {
     message: `Claim ${action.toLowerCase()} successfully`,
     status: newStatus
   };
+}
+
+// Called right after submitExpense puts a claim into the Manager stage. Routes it to the
+// employee's specifically assigned manager (Users.ManagerId) if one is set; otherwise there's
+// no one who could ever act on this stage, so it auto-advances past it rather than leaving the
+// claim stuck forever, recording an ApprovalHistory entry that makes the auto-approval visible.
+async function routeInitialApproval(claimId) {
+  const claim = await ExpenseClaim.findByPk(claimId);
+
+  if (!claim) return;
+
+  const stage = STAGE_BY_STATUS[claim.Status];
+
+  if (!stage || stage.scope !== 'personalManager') return;
+
+  const employee = await User.findByPk(claim.EmployeeId);
+
+  if (employee && employee.ManagerId) {
+    await notificationService.notifyPendingApprovalForManager(claimId, employee.ManagerId);
+    return;
+  }
+
+  await processApproval(
+    claimId,
+    {
+      approverId: employee ? employee.UserId : claim.EmployeeId,
+      comments: 'Auto-approved: no manager is mapped for this employee.'
+    },
+    'Approved',
+    { system: true }
+  );
 }
 
 async function getNextStageRole(amount, currentLevel) {
@@ -291,5 +356,6 @@ module.exports = {
   getPendingApprovals,
   approveExpense,
   rejectExpense,
-  sendBackExpense
+  sendBackExpense,
+  routeInitialApproval
 };

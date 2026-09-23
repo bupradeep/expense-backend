@@ -31,6 +31,10 @@ const User = sequelize.define('User', {
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  ManagerId: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
   IsActive: {
     type: DataTypes.BOOLEAN,
     allowNull: false,

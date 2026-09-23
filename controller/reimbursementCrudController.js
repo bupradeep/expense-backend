@@ -5,6 +5,9 @@ const reimbursementCrudService = require('../services/reimbursementCrudService')
 
 router.post('/', async (req, res, next) => {
   try {
+    req.body.createdBy = req.user.userId;
+    req.body.processedBy = req.user.userId;
+
     const result = await reimbursementCrudService.createReimbursement(req.body);
     res.status(201).json(result);
   } catch (error) {
@@ -33,6 +36,9 @@ router.get('/:id', async (req, res, next) => {
 
 router.put('/:id', async (req, res, next) => {
   try {
+    req.body.updatedBy = req.user.userId;
+    req.body.processedBy = req.user.userId;
+
     const result = await reimbursementCrudService.updateReimbursement(req.params.id, req.body);
     res.json(result);
   } catch (error) {

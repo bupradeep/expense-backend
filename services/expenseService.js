@@ -15,6 +15,7 @@ const {
 } = require('../models');
 const { getPagination, toPagedResult } = require('../utils/pagination');
 const notificationService = require('./notificationService');
+const approvalService = require('./approvalService');
 
 const COMMENT_ROLE_STATUS_MAP = {
   Manager: 'Submitted',
@@ -313,7 +314,9 @@ async function submitExpense(id, data, actor) {
   });
 
   await notificationService.notifySubmitted(id);
-  await notificationService.notifyPendingApproval(id, 'Manager', existing.DepartmentId);
+  // Routes to the employee's specifically assigned manager, or auto-approves the Manager
+  // stage (with an ApprovalHistory comment explaining why) if none is mapped.
+  await approvalService.routeInitialApproval(id);
 
   return {
     message: 'Expense claim submitted successfully',
