@@ -1,5 +1,6 @@
 const { ApprovalRule } = require('../models');
 const { getPagination, toPagedResult } = require('../utils/pagination');
+const { createError } = require('../utils/httpError');
 
 const VALID_APPROVER_ROLES = ['Manager', 'DepartmentHead', 'Finance'];
 
@@ -77,12 +78,6 @@ function validate(data) {
   if (!VALID_APPROVER_ROLES.includes(data.approverRole)) {
     throw createError(400, `approverRole must be one of: ${VALID_APPROVER_ROLES.join(', ')}`);
   }
-}
-
-function createError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
 }
 
 module.exports = {

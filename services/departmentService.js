@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const { Department } = require('../models');
 const { getPagination, toPagedResult } = require('../utils/pagination');
+const { createError } = require('../utils/httpError');
 
 async function createDepartment(data) {
   if (!data.departmentName) throw createError(400, 'departmentName is required');
@@ -78,12 +79,6 @@ async function assertNoDuplicate(data, excludeDepartmentId) {
   if (existing) {
     throw createError(409, 'A department with this name already exists');
   }
-}
-
-function createError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
 }
 
 module.exports = {

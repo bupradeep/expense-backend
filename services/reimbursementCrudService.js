@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const { Reimbursement, ExpenseClaim } = require('../models');
 const { getPagination, toPagedResult } = require('../utils/pagination');
+const { createError } = require('../utils/httpError');
 
 async function createReimbursement(data) {
   if (!data.expenseClaimId) throw createError(400, 'expenseClaimId is required');
@@ -95,12 +96,6 @@ async function deleteReimbursement(id) {
   await reimbursement.destroy();
 
   return { message: 'Reimbursement deleted successfully' };
-}
-
-function createError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
 }
 
 module.exports = {

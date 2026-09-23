@@ -1,4 +1,5 @@
 const { PolicyRule } = require('../models');
+const { createError } = require('../utils/httpError');
 
 async function createPolicyRule(data) {
   validate(data);
@@ -62,12 +63,6 @@ function validate(data) {
     throw createError(400, 'maximumAmount is required');
   }
   if (!data.limitType) throw createError(400, 'limitType is required');
-}
-
-function createError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
 }
 
 module.exports = {

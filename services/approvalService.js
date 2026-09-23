@@ -8,6 +8,7 @@ const {
   Department
 } = require('../models');
 const { getPagination, toPagedResult } = require('../utils/pagination');
+const { createError } = require('../utils/httpError');
 const notificationService = require('./notificationService');
 
 // Single source of truth for the approval chain. Level 1 (Manager) is always
@@ -376,12 +377,6 @@ async function getStartingStage(amount) {
   }
 
   return stage;
-}
-
-function createError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
 }
 
 module.exports = {

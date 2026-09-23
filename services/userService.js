@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const { User, Department } = require('../models');
 const { getPagination, toPagedResult } = require('../utils/pagination');
+const { createError } = require('../utils/httpError');
 
 const ROLES = ['Employee', 'Admin', 'Manager', 'Finance', 'DepartmentHead'];
 const DEFAULT_ROLE = 'Employee';
@@ -227,12 +228,6 @@ async function assertNoDuplicate(data, excludeUserId) {
   }
 
   throw createError(409, 'A user with this employeeObjectId already exists');
-}
-
-function createError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
 }
 
 module.exports = {

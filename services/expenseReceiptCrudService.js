@@ -1,5 +1,6 @@
 const { ExpenseReceipt } = require('../models');
 const { uploadReceiptToDrive, streamReceiptFromDrive, deleteReceiptFromDrive } = require('../utils/receiptDriveStorage');
+const { createError } = require('../utils/httpError');
 
 async function createReceipt(data, file) {
   if (!data.expenseClaimId) throw createError(400, 'expenseClaimId is required');
@@ -77,12 +78,6 @@ async function streamReceiptFile(id, res) {
   const receipt = await getReceiptById(id);
 
   await streamReceiptFromDrive(receipt.FilePath, res, receipt.FileName);
-}
-
-function createError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
 }
 
 module.exports = {

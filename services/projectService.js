@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const { Project } = require('../models');
 const { getPagination, toPagedResult } = require('../utils/pagination');
+const { createError } = require('../utils/httpError');
 
 async function createProject(data) {
   if (!data.projectName) throw createError(400, 'projectName is required');
@@ -86,12 +87,6 @@ async function assertNoDuplicate(data, excludeProjectId) {
   if (existing) {
     throw createError(409, 'A project with this projectCode already exists');
   }
-}
-
-function createError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
 }
 
 module.exports = {

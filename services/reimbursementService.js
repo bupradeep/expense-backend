@@ -1,5 +1,6 @@
 const { ExpenseClaim, Reimbursement, AuditLog } = require('../models');
 const notificationService = require('./notificationService');
+const { createError } = require('../utils/httpError');
 
 async function processPayment(id, data) {
   if (!data.processedBy) {
@@ -61,12 +62,6 @@ async function processPayment(id, data) {
     message: 'Reimbursement processed successfully',
     status: 'Reimbursed'
   };
-}
-
-function createError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
 }
 
 module.exports = {

@@ -14,6 +14,7 @@ const {
   ExpenseClaimComment
 } = require('../models');
 const { getPagination, toPagedResult } = require('../utils/pagination');
+const { createError } = require('../utils/httpError');
 const notificationService = require('./notificationService');
 const approvalService = require('./approvalService');
 
@@ -485,12 +486,6 @@ function validateCreateExpense(data) {
       throw createError(400, 'Expense amount must be greater than zero');
     }
   }
-}
-
-function createError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
 }
 
 module.exports = {

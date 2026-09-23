@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const { ExpenseCategory } = require('../models');
 const { getPagination, toPagedResult } = require('../utils/pagination');
+const { createError } = require('../utils/httpError');
 
 async function createCategory(data) {
   if (!data.categoryName) throw createError(400, 'categoryName is required');
@@ -78,12 +79,6 @@ async function assertNoDuplicate(data, excludeCategoryId) {
   if (existing) {
     throw createError(409, 'An expense category with this categoryName already exists');
   }
-}
-
-function createError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
 }
 
 module.exports = {

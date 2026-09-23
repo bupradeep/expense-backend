@@ -1,4 +1,5 @@
 const { ExpenseItem, ExpenseClaim } = require('../models');
+const { createError } = require('../utils/httpError');
 
 async function createExpenseItem(data) {
   validate(data);
@@ -95,12 +96,6 @@ function validateForUpdate(data) {
   if (!data.amount || Number(data.amount) <= 0) {
     throw createError(400, 'amount must be greater than zero');
   }
-}
-
-function createError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
 }
 
 module.exports = {
