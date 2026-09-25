@@ -120,7 +120,7 @@ async function getExpenses(filters) {
   return toPagedResult(pagination.page, pagination.pageSize, count, rows);
 }
 
-async function getExpenseById(id) {
+async function getExpenseById(id, actor) {
   const claim = await ExpenseClaim.findByPk(id, {
     include: [
       { model: User, as: 'Employee' },
@@ -145,6 +145,8 @@ async function getExpenseById(id) {
   if (!claim) {
     throw createError(404, 'Expense claim not found');
   }
+
+  assertCanViewClaim(claim, actor);
 
   return claim;
 }
@@ -361,7 +363,9 @@ async function validatePolicies(items) {
   };
 }
 
-async function getExpenseHistory(id) {
+async function getExpenseHistory(id, actor) {
+  await assertCanViewClaimById(id, actor);
+
   return ApprovalHistory.findAll({
     where: { ExpenseClaimId: id },
     include: [{ model: User, as: 'Approver' }],
@@ -369,14 +373,18 @@ async function getExpenseHistory(id) {
   });
 }
 
-async function getReceipts(id) {
+async function getReceipts(id, actor) {
+  await assertCanViewClaimById(id, actor);
+
   return ExpenseReceipt.findAll({
     where: { ExpenseClaimId: id },
     order: [['CreatedAt', 'DESC']]
   });
 }
 
-async function getComments(id) {
+async function getComments(id, actor) {
+  await assertCanViewClaimById(id, actor);
+
   return ExpenseClaimComment.findAll({
     where: { ExpenseClaimId: id },
     include: [{ model: User, as: 'User' }],
@@ -428,6 +436,38 @@ function assertIsOwnerOrAdmin(claim, actor) {
   throw createError(403, 'You can only act on your own expense claims');
 }
 
+// Read access is broader than write access: the claim's own employee, an Admin, or anyone
+// holding an approver-capable role (Manager/DepartmentHead/Finance) can view a claim's details,
+// history, receipts and comments -- not just the exact approver a claim currently happens to be
+// routed to. This intentionally does not replicate approvalService's precise per-stage/department
+// scoping; it's a broader "can act as an approver somewhere" check for read access only.
+const APPROVER_ROLES = ['Manager', 'DepartmentHead', 'Finance'];
+
+function assertCanViewClaim(claim, actor) {
+  if (!actor) {
+    // No authenticated actor was supplied (e.g. an internal/service call) -- nothing to check.
+    return;
+  }
+
+  if (claim.EmployeeId === actor.userId || actor.role === 'Admin' || APPROVER_ROLES.includes(actor.role)) {
+    return;
+  }
+
+  throw createError(403, 'You do not have permission to view this expense claim');
+}
+
+async function assertCanViewClaimById(id, actor) {
+  if (!actor) return;
+
+  const claim = await ExpenseClaim.findByPk(id, { attributes: ['ExpenseClaimId', 'EmployeeId'] });
+
+  if (!claim) {
+    throw createError(404, 'Expense claim not found');
+  }
+
+  assertCanViewClaim(claim, actor);
+}
+
 async function assertCanComment(claim, userId) {
   const user = await User.findByPk(userId);
   if (!user) throw createError(404, 'User not found');
@@ -465,6 +505,10 @@ async function assertCanCreateClaim(employeeId) {
 
   if (employee.Role === 'Finance') {
     throw createError(403, 'Finance users cannot create expense claims - they can only review claims pending their approval');
+  }
+
+  if (employee.Role === 'Admin') {
+    throw createError(403, 'Admin cannot create expense claims');
   }
 }
 

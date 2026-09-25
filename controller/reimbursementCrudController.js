@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 
 const reimbursementCrudService = require('../services/reimbursementCrudService');
+const { requireRole } = require('../middleware/requireRole');
 
-router.post('/', async (req, res, next) => {
+router.post('/', requireRole('Finance'), async (req, res, next) => {
   try {
     req.body.createdBy = req.user.userId;
     req.body.processedBy = req.user.userId;
@@ -16,7 +17,7 @@ router.post('/', async (req, res, next) => {
 });
 
 // GET /reimbursements?expenseClaimId=1
-router.get('/', async (req, res, next) => {
+router.get('/', requireRole('Finance'), async (req, res, next) => {
   try {
     const result = await reimbursementCrudService.getReimbursements(req.query);
     res.json(result);
@@ -25,7 +26,7 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', requireRole('Finance'), async (req, res, next) => {
   try {
     const result = await reimbursementCrudService.getReimbursementById(req.params.id);
     res.json(result);
@@ -34,7 +35,7 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', requireRole('Finance'), async (req, res, next) => {
   try {
     req.body.updatedBy = req.user.userId;
     req.body.processedBy = req.user.userId;
@@ -46,7 +47,7 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', requireRole('Finance'), async (req, res, next) => {
   try {
     const result = await reimbursementCrudService.deleteReimbursement(req.params.id);
     res.json(result);

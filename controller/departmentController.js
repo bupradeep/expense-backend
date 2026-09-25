@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 
 const departmentService = require('../services/departmentService');
+const { requireRole } = require('../middleware/requireRole');
 
-router.post('/', async (req, res, next) => {
+router.post('/', requireRole('Admin'), async (req, res, next) => {
   try {
     req.body.createdBy = req.user.userId;
 
@@ -32,7 +33,7 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', requireRole('Admin'), async (req, res, next) => {
   try {
     req.body.updatedBy = req.user.userId;
 
@@ -43,7 +44,7 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', requireRole('Admin'), async (req, res, next) => {
   try {
     const result = await departmentService.deleteDepartment(req.params.id);
     res.json(result);

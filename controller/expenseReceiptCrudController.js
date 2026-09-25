@@ -17,7 +17,7 @@ router.post('/', upload.single('file'), async (req, res, next) => {
     req.body.createdBy = req.user.userId;
     req.body.uploadedBy = req.user.userId;
 
-    const result = await receiptService.createReceipt(req.body, req.file);
+    const result = await receiptService.createReceipt(req.body, req.file, req.user);
     res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -27,7 +27,7 @@ router.post('/', upload.single('file'), async (req, res, next) => {
 // GET /expense-receipts/:id/download
 router.get('/:id/download', async (req, res, next) => {
   try {
-    await receiptService.streamReceiptFile(req.params.id, res);
+    await receiptService.streamReceiptFile(req.params.id, res, req.user);
   } catch (error) {
     next(error);
   }
@@ -36,7 +36,7 @@ router.get('/:id/download', async (req, res, next) => {
 // GET /expense-receipts?expenseClaimId=1
 router.get('/', async (req, res, next) => {
   try {
-    const result = await receiptService.getReceipts(req.query);
+    const result = await receiptService.getReceipts(req.query, req.user);
     res.json(result);
   } catch (error) {
     next(error);
@@ -45,7 +45,7 @@ router.get('/', async (req, res, next) => {
 
 router.get('/:id', async (req, res, next) => {
   try {
-    const result = await receiptService.getReceiptById(req.params.id);
+    const result = await receiptService.getReceiptById(req.params.id, req.user);
     res.json(result);
   } catch (error) {
     next(error);
@@ -56,7 +56,7 @@ router.put('/:id', async (req, res, next) => {
   try {
     req.body.updatedBy = req.user.userId;
 
-    const result = await receiptService.updateReceipt(req.params.id, req.body);
+    const result = await receiptService.updateReceipt(req.params.id, req.body, req.user);
     res.json(result);
   } catch (error) {
     next(error);
@@ -65,7 +65,7 @@ router.put('/:id', async (req, res, next) => {
 
 router.delete('/:id', async (req, res, next) => {
   try {
-    const result = await receiptService.deleteReceipt(req.params.id);
+    const result = await receiptService.deleteReceipt(req.params.id, req.user);
     res.json(result);
   } catch (error) {
     next(error);

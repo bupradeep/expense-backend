@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 
 const reimbursementService = require('../services/reimbursementService');
+const { requireRole } = require('../middleware/requireRole');
 
 // POST /expenses/:id/payment
-router.post('/:id/payment', async (req, res, next) => {
+router.post('/:id/payment', requireRole('Finance'), async (req, res, next) => {
   try {
     // Who processed the payment is always the authenticated caller -- never trust a
     // client-supplied processedBy.

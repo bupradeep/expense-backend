@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 
 const approvalRuleService = require('../services/approvalRuleService');
+const { requireRole } = require('../middleware/requireRole');
 
-router.post('/', async (req, res, next) => {
+router.post('/', requireRole('Admin'), async (req, res, next) => {
   try {
     req.body.createdBy = req.user.userId;
 
@@ -14,7 +15,7 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-router.get('/', async (req, res, next) => {
+router.get('/', requireRole('Admin'), async (req, res, next) => {
   try {
     const result = await approvalRuleService.getApprovalRules(req.query);
     res.json(result);
@@ -23,7 +24,7 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', requireRole('Admin'), async (req, res, next) => {
   try {
     const result = await approvalRuleService.getApprovalRuleById(req.params.id);
     res.json(result);
@@ -32,7 +33,7 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', requireRole('Admin'), async (req, res, next) => {
   try {
     req.body.updatedBy = req.user.userId;
 
@@ -43,7 +44,7 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', requireRole('Admin'), async (req, res, next) => {
   try {
     const result = await approvalRuleService.deleteApprovalRule(req.params.id);
     res.json(result);

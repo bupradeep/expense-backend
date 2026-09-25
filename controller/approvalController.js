@@ -2,6 +2,13 @@ const express = require('express');
 const router = express.Router();
 
 const approvalService = require('../services/approvalService');
+const { requireRole } = require('../middleware/requireRole');
+
+// The exact role allowed to act on a given claim depends on which stage it's currently at
+// (Manager/DepartmentHead/Finance, chosen by the amount-based ApprovalRule routing) -- that
+// precise, per-claim check already lives in approvalService.processApproval. This is just a
+// coarse defense-in-depth gate rejecting roles that can never act as an approver at all.
+const APPROVER_ROLES = ['Manager', 'DepartmentHead', 'Finance'];
 
 // GET /approvals/pending?userId=2
 router.get('/pending', async (req, res, next) => {
@@ -35,7 +42,7 @@ router.get('/history', async (req, res, next) => {
 });
 
 // POST /approvals/:id/approve
-router.post('/:id/approve', async (req, res, next) => {
+router.post('/:id/approve', requireRole(...APPROVER_ROLES), async (req, res, next) => {
   try {
     // The approver is always the authenticated caller -- never trust a client-supplied
     // approverId, or any signed-in user could forge another approver's decision.
@@ -53,7 +60,7 @@ router.post('/:id/approve', async (req, res, next) => {
 });
 
 // POST /approvals/:id/reject
-router.post('/:id/reject', async (req, res, next) => {
+router.post('/:id/reject', requireRole(...APPROVER_ROLES), async (req, res, next) => {
   try {
     req.body.approverId = req.user.userId;
 
@@ -69,7 +76,7 @@ router.post('/:id/reject', async (req, res, next) => {
 });
 
 // POST /approvals/:id/send-back
-router.post('/:id/send-back', async (req, res, next) => {
+router.post('/:id/send-back', requireRole(...APPROVER_ROLES), async (req, res, next) => {
   try {
     req.body.approverId = req.user.userId;
 

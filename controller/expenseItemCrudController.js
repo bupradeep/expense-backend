@@ -7,7 +7,7 @@ router.post('/', async (req, res, next) => {
   try {
     req.body.createdBy = req.user.userId;
 
-    const result = await expenseItemService.createExpenseItem(req.body);
+    const result = await expenseItemService.createExpenseItem(req.body, req.user);
     res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -17,7 +17,7 @@ router.post('/', async (req, res, next) => {
 // GET /expense-items?expenseClaimId=1
 router.get('/', async (req, res, next) => {
   try {
-    const result = await expenseItemService.getExpenseItems(req.query);
+    const result = await expenseItemService.getExpenseItems(req.query, req.user);
     res.json(result);
   } catch (error) {
     next(error);
@@ -26,7 +26,7 @@ router.get('/', async (req, res, next) => {
 
 router.get('/:id', async (req, res, next) => {
   try {
-    const result = await expenseItemService.getExpenseItemById(req.params.id);
+    const result = await expenseItemService.getExpenseItemById(req.params.id, req.user);
     res.json(result);
   } catch (error) {
     next(error);
@@ -37,7 +37,7 @@ router.put('/:id', async (req, res, next) => {
   try {
     req.body.updatedBy = req.user.userId;
 
-    const result = await expenseItemService.updateExpenseItem(req.params.id, req.body);
+    const result = await expenseItemService.updateExpenseItem(req.params.id, req.body, req.user);
     res.json(result);
   } catch (error) {
     next(error);
@@ -46,7 +46,7 @@ router.put('/:id', async (req, res, next) => {
 
 router.delete('/:id', async (req, res, next) => {
   try {
-    const result = await expenseItemService.deleteExpenseItem(req.params.id, req.user.userId);
+    const result = await expenseItemService.deleteExpenseItem(req.params.id, req.user);
     res.json(result);
   } catch (error) {
     next(error);
