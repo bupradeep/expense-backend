@@ -52,7 +52,7 @@ function verifyToken(token) {
       getSigningKey,
       {
         algorithms: ['RS256'],
-        audience: clientId,
+        audience: [clientId, `api://${clientId}`, `api://localhost/${clientId}`, `api://localhost:3978/${clientId}`],
         issuer: expectedIssuer,
         clockTolerance: 5
       },
